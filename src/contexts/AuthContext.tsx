@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { 
   User,
   onAuthStateChanged,
-  sendEmailVerification,
   updateProfile
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -31,7 +30,7 @@ interface AuthContextType {
     phone: string;
     password: string;
     city: string;
-  }) => Promise<void>;
+  }) => Promise<{ user: User; needsVerification: boolean }>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   resendVerification: () => Promise<void>;

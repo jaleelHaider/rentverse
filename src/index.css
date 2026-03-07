@@ -1,42 +1,3 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Custom styles */
-.container-custom {
-  @apply container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
-}
-
-.card {
-  @apply bg-white border border-gray-200 rounded-xl shadow-sm;
-}
-
-.btn-primary {
-  @apply bg-primary-600 hover:bg-primary-700 text-white font-medium px-6 py-3 rounded-lg transition-colors;
-}
-
-.btn-secondary {
-  @apply bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium px-6 py-3 rounded-lg transition-colors;
-}
-
-.section-title {
-  @apply text-3xl font-bold text-gray-900 mb-4;
-}
-
-.section-subtitle {
-  @apply text-gray-600 text-lg;
-}
-
-.input-field {
-  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors;
-}
-
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
 
@@ -48,7 +9,7 @@
   html {
     scroll-behavior: auto;
   }
-  
+
   body {
     @apply font-sans text-gray-900 bg-gray-50;
   }
@@ -58,32 +19,32 @@
   .container-custom {
     @apply container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
   }
-  
+
   .btn-primary {
     @apply bg-primary-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-700 
            transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 
            focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
   }
-  
+
   .btn-secondary {
     @apply bg-white text-gray-700 px-6 py-3 rounded-lg font-medium border border-gray-300 
            hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 
            focus:ring-primary-500 focus:ring-offset-2;
   }
-  
+
   .input-field {
     @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 
            focus:border-transparent transition-all duration-200 placeholder:text-gray-400;
   }
-  
+
   .card {
     @apply bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200;
   }
-  
+
   .section-title {
     @apply text-3xl font-bold text-gray-900 mb-2;
   }
-  
+
   .section-subtitle {
     @apply text-lg text-gray-600 mb-8;
   }
@@ -105,8 +66,6 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-500;
 }
-
-
 
 /* Add these animations */
 @keyframes scale-in {

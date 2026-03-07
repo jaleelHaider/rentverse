@@ -2,17 +2,13 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { 
   Smartphone, 
-  Laptop, 
   Home, 
   Car, 
   Shirt, 
   Dumbbell, 
-  BookOpen, 
   Camera,
   Sofa,
   Gamepad2,
-  Music,
-  Bike,
   ChevronRight
 } from 'lucide-react'
 

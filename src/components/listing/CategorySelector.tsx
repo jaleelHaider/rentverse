@@ -4,13 +4,9 @@ import {
   Car, 
   Briefcase, 
   Camera, 
-  Music, 
-  Gamepad2, 
   Dumbbell, 
   PartyPopper,
   Palette,
-  Tent,
-  Bike,
   MoreHorizontal
 } from 'lucide-react';
 

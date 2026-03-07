@@ -10,9 +10,7 @@ import {
   UserPlus,
   Package,
   Star,
-  Clock,
-  TrendingUp,
-  Users
+  TrendingUp
 } from 'lucide-react'
 
 const HowItWorks: React.FC = () => {

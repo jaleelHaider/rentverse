@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Upload, Shield, Calendar, CreditCard, Star } from 'lucide-react';
+import { Search, Upload, Calendar, CreditCard, Star } from 'lucide-react';
 
 const HowItWorks: React.FC = () => {
   const steps = [

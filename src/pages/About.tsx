@@ -4,11 +4,7 @@ import {
   Target, 
   Users, 
   Shield, 
-  Zap, 
-  Globe, 
-  Award,
-  TrendingUp,
-  Heart
+  Zap
 } from 'lucide-react'
 
 const About: React.FC = () => {

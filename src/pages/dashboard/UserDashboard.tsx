@@ -6,12 +6,10 @@ import {
   DollarSign, 
   TrendingUp, 
   MessageSquare,
-  Settings,
   Bell,
   HelpCircle,
   Award,
   BarChart3,
-  CreditCard,
   Shield
 } from 'lucide-react'
 import StatsCard from '@/components/dashboard/StatsCard'

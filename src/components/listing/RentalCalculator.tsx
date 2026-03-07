@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Calculator, Tag, Clock } from 'lucide-react';
+import { Calculator, Tag, Clock } from 'lucide-react';
 
 interface RentalPrice {
   daily: number;

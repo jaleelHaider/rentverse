@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Star, Shield, MapPin, CheckCircle, MessageCircle, Phone } from 'lucide-react';
+import { Star, Shield, MapPin, CheckCircle, MessageCircle, Phone } from 'lucide-react';
 
 interface SellerInfoProps {
   seller: {

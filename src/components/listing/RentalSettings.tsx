@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Users, Shield, Zap } from 'lucide-react';
+import { Calendar, Users, Shield, Zap } from 'lucide-react';
 
 interface RentalSettingsProps {
   onSettingsChange?: (settings: {

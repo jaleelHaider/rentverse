@@ -17,8 +17,7 @@ import {
   HelpCircle,
   LogOut,
   Shield,
-  AlertCircle,
-  Bell
+  AlertCircle
 } from 'lucide-react'
 import { User } from 'firebase/auth'
 

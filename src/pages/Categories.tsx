@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   Smartphone, 
-  Laptop, 
   Home, 
   Car, 
   Shirt, 
@@ -12,7 +11,6 @@ import {
   Sofa,
   Gamepad2,
   Music,
-  Bike,
   TrendingUp,
   Star,
   ChevronRight,
@@ -22,7 +20,6 @@ import {
 
 const Categories: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   const categories = [
     {
@@ -243,7 +240,6 @@ const Categories: React.FC = () => {
                       key={category.id}
                       to={`/browse?category=${category.id}`}
                       className="card p-6 hover:shadow-lg transition-shadow group"
-                      onClick={() => setSelectedCategory(category.id)}
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className={`w-14 h-14 rounded-xl ${category.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform`}>
