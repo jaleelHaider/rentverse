@@ -43,7 +43,7 @@ interface ListingRow {
 	owner_name: string | null;
 	created_at: string;
 	updated_at: string;
-	status: "draft" | "active" | "paused" | "archived";
+	status: "draft" | "active" | "paused" | "archived" | "pending" | "sold" | "rented";
 	listing_images: ListingImageRow[] | null;
 }
 
@@ -102,6 +102,22 @@ const formatRelativeCreatedAt = (isoDate: string): string => {
 	return `${months} months ago`;
 };
 
+const mapStatusForClient = (status: ListingRow["status"]): Listing["status"] => {
+	if (status === "draft") {
+		return "pending";
+	}
+
+	if (status === "archived") {
+		return "paused";
+	}
+
+	if (status === "sold" || status === "rented" || status === "pending" || status === "paused") {
+		return status;
+	}
+
+	return "active";
+};
+
 const mapRowToMarketplaceListing = (row: ListingRow): Listing => {
 	const sortedImages = [...(row.listing_images || [])].sort((a, b) => {
 		if (a.is_primary === b.is_primary) {
@@ -112,8 +128,7 @@ const mapRowToMarketplaceListing = (row: ListingRow): Listing => {
 
 	const images = sortedImages.map((image) => image.public_url);
 	const listingType = mapListingTypeForClient(row.listing_type);
-	const normalizedStatus: Listing["status"] =
-		row.status === "paused" ? "paused" : "active";
+	const normalizedStatus = mapStatusForClient(row.status);
 
 	return {
 		id: row.id,
@@ -312,4 +327,74 @@ export const fetchMarketplaceListings = async (): Promise<Listing[]> => {
 	}
 
 	return ((data || []) as ListingRow[]).map(mapRowToMarketplaceListing);
+};
+
+export const fetchUserListings = async (firebaseUid: string): Promise<Listing[]> => {
+	const { data, error } = await supabase
+		.from("listings")
+		.select(
+			"id,title,description,category,sub_category,condition,listing_type,buy_price,rent_daily_price,rent_weekly_price,rent_monthly_price,security_deposit,location_address,location_city,location_state,location_lat,location_lng,features,specifications,owner_firebase_uid,owner_name,created_at,updated_at,status,listing_images(public_url,is_primary,display_order)"
+		)
+		.eq("owner_firebase_uid", firebaseUid)
+		.order("created_at", { ascending: false });
+
+	if (error) {
+		throw new Error(error.message || "Failed to fetch your listings");
+	}
+
+	return ((data || []) as ListingRow[]).map(mapRowToMarketplaceListing);
+};
+
+export const fetchMarketplaceListingById = async (listingId: string): Promise<Listing> => {
+	const { data, error } = await supabase
+		.from("listings")
+		.select(
+			"id,title,description,category,sub_category,condition,listing_type,buy_price,rent_daily_price,rent_weekly_price,rent_monthly_price,security_deposit,location_address,location_city,location_state,location_lat,location_lng,features,specifications,owner_firebase_uid,owner_name,created_at,updated_at,status,listing_images(public_url,is_primary,display_order)"
+		)
+		.eq("id", listingId)
+		.single();
+
+	if (error || !data) {
+		throw new Error(error?.message || "Listing not found");
+	}
+
+	return mapRowToMarketplaceListing(data as ListingRow);
+};
+
+interface SellerStatsRow {
+	status: ListingRow["status"];
+	created_at: string;
+}
+
+export const fetchSellerDerivedStats = async (
+	ownerFirebaseUid: string
+): Promise<{ activeListings: number; memberSince: string }> => {
+	const { data, error } = await supabase
+		.from("listings")
+		.select("status,created_at")
+		.eq("owner_firebase_uid", ownerFirebaseUid);
+
+	if (error) {
+		throw new Error(error.message || "Failed to fetch seller stats");
+	}
+
+	const rows = (data || []) as SellerStatsRow[];
+	const activeListings = rows.filter((row) => row.status === "active").length;
+
+	let earliestTime = Number.POSITIVE_INFINITY;
+	for (const row of rows) {
+		const time = new Date(row.created_at).getTime();
+		if (Number.isFinite(time) && time < earliestTime) {
+			earliestTime = time;
+		}
+	}
+
+	const memberSince = Number.isFinite(earliestTime)
+		? String(new Date(earliestTime).getFullYear())
+		: "0";
+
+	return {
+		activeListings,
+		memberSince,
+	};
 };

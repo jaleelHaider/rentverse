@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom'
+import { useEffect, useLayoutEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import Layout from './components/layout/Layout.tsx'
 import Home from './pages/Home.tsx'
@@ -19,10 +20,33 @@ import Categories from './pages/Categories'
 import NotFound from './pages/NotFound'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 
+const ScrollToTop: React.FC = () => {
+  const location = useLocation()
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [location.pathname, location.search])
+
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual'
+    }
+
+    return () => {
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'auto'
+      }
+    }
+  }, [])
+
+  return null
+}
+
 function App() {
   return (
     <AuthProvider>
       <Layout>
+        <ScrollToTop />
         <Routes> 
           {/* Public Routes */}
           <Route path="/" element={<Home />} />

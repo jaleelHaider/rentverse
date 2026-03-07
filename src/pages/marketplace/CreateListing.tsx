@@ -38,6 +38,7 @@ const CreateListing: React.FC = () => {
   const [listingType, setListingType] = useState<"buy" | "rent" | "both">("both");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isPublishTriggered, setIsPublishTriggered] = useState(false);
 
   const [specRows, setSpecRows] = useState<SpecRow[]>([{ key: "", value: "" }]);
 
@@ -168,14 +169,21 @@ const CreateListing: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Guard against implicit/accidental form submits.
+    if (!isPublishTriggered) {
+      return;
+    }
+
     setSubmitError(null);
     const validationError = validateListing();
     if (validationError) {
+      setIsPublishTriggered(false);
       setSubmitError(validationError);
       return;
     }
 
     if (!currentUser) {
+      setIsPublishTriggered(false);
       setSubmitError("You must be logged in to create a listing.");
       return;
     }
@@ -238,6 +246,7 @@ const CreateListing: React.FC = () => {
       const message = error instanceof Error ? error.message : "Failed to publish listing.";
       setSubmitError(message);
     } finally {
+      setIsPublishTriggered(false);
       setIsSubmitting(false);
     }
   };
@@ -262,7 +271,7 @@ const CreateListing: React.FC = () => {
               </div>
             ))}
           </div>
-          <div className="relative -mt-5 h-2 rounded-full bg-gray-200">
+          <div className="relative mt-4 h-2 rounded-full bg-gray-200">
             <div
               className="absolute left-0 top-0 h-2 rounded-full bg-primary-600 transition-all duration-300"
               style={{ width: `${(step - 1) * 33.33}%` }}
@@ -752,6 +761,7 @@ const CreateListing: React.FC = () => {
                 ) : (
                   <button
                     type="submit"
+                    onClick={() => setIsPublishTriggered(true)}
                     disabled={isSubmitting}
                     className="btn-primary px-12 py-3 text-lg disabled:cursor-not-allowed disabled:opacity-60"
                   >

@@ -1,8 +1,7 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { 
   MapPin, 
-  Calendar, 
   Shield, 
   Star, 
   Heart, 
@@ -10,6 +9,7 @@ import {
   Flag, 
   ChevronRight,
   Clock,
+  Eye,
   CheckCircle,
   MessageCircle,
   Phone,
@@ -20,20 +20,105 @@ import RentalCalculator from '@/components/listing/RentalCalculator'
 import SellerInfo from '@/components/listing/SellerInfo'
 import Specifications from '@/components/listing/Specifications'
 import SimilarListings from '@/components/listing/SimilarListings'
-import { mockListings } from '@/data/mockData'
+import { fetchMarketplaceListingById, fetchSellerDerivedStats } from '@/api/endpoints/listing'
+import type { Listing } from '@/types'
 
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const [selectedTab, setSelectedTab] = useState('details')
   const [isSaved, setIsSaved] = useState(false)
-  
-  // Find listing by ID
-  const listing = mockListings.find(l => l.id === id) || mockListings[0]
+  const [listing, setListing] = useState<Listing | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [sellerStats, setSellerStats] = useState({ activeListings: 0, memberSince: '0' })
+
+  useEffect(() => {
+    const loadListing = async () => {
+      if (!id) {
+        setLoadError('Invalid listing id.')
+        setIsLoading(false)
+        return
+      }
+
+      setIsLoading(true)
+      setLoadError(null)
+
+      try {
+        const data = await fetchMarketplaceListingById(id)
+        setListing(data)
+
+        try {
+          const stats = await fetchSellerDerivedStats(data.seller.id)
+          setSellerStats(stats)
+        } catch {
+          setSellerStats({ activeListings: 0, memberSince: '0' })
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load listing.'
+        setLoadError(message)
+        setListing(null)
+        setSellerStats({ activeListings: 0, memberSince: '0' })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void loadListing()
+  }, [id])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container-custom py-12">
+          <div className="card p-8 text-center text-gray-600">Loading listing details...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!listing) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container-custom py-12">
+          <div className="card p-8 text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">Listing not found</h1>
+            <p className="text-gray-600 mb-6">{loadError || 'This listing is not available.'}</p>
+            <Link to="/browse" className="btn-primary">Back to Browse</Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const sellerForDisplay = {
+    name: listing.seller.name,
+    rating: listing.seller.rating,
+    totalReviews: 0,
+    memberSince: sellerStats.memberSince,
+    verified: listing.seller.verified,
+    location: `${listing.location.area}, ${listing.location.city}`,
+    responseRate: listing.seller.responseRate,
+    responseTime: '0h',
+    totalListings: sellerStats.activeListings,
+    avatar: listing.seller.avatar,
+  }
+
+  const rentalListingForCalculator = {
+    title: listing.title,
+    price: {
+      rent: {
+        daily: listing.price.rent?.daily || 0,
+        weekly: listing.price.rent?.weekly || 0,
+        monthly: listing.price.rent?.monthly || 0,
+      },
+      securityDeposit: listing.price.securityDeposit || 0,
+    },
+  }
   
   const tabs = [
     { id: 'details', label: 'Details' },
     { id: 'specs', label: 'Specifications' },
-    { id: 'reviews', label: 'Reviews (24)' },
+    { id: 'reviews', label: 'Reviews (0)' },
     { id: 'shipping', label: 'Delivery & Returns' },
   ]
 
@@ -209,7 +294,7 @@ const ListingDetail: React.FC = () => {
                             <Star key={i} size={20} className="text-yellow-400 fill-current" />
                           ))}
                         </div>
-                        <div className="text-sm text-gray-600 mt-1">Based on 24 reviews</div>
+                        <div className="text-sm text-gray-600 mt-1">Based on 0 reviews</div>
                       </div>
                       <button className="btn-primary">Write a Review</button>
                     </div>
@@ -226,11 +311,11 @@ const ListingDetail: React.FC = () => {
           {/* Right Column - Action Panel */}
           <div className="space-y-6">
             {/* Seller Info */}
-            <SellerInfo seller={listing.seller} />
+            <SellerInfo seller={sellerForDisplay} />
             
             {/* Rental Calculator */}
             {listing.type === 'rent' || listing.type === 'both' ? (
-              <RentalCalculator listing={listing} />
+              <RentalCalculator listing={rentalListingForCalculator} />
             ) : null}
             
             {/* Action Buttons */}

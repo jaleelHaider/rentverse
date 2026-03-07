@@ -5,8 +5,6 @@ import {
   Shield, 
   TrendingUp, 
   Clock, 
-  Star, 
-  Users, 
   ArrowRight,
   ChevronRight,
   Sparkles

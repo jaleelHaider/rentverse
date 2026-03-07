@@ -1,113 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, Calendar, Eye } from 'lucide-react';
-
-interface Listing {
-  id: string;
-  title: string;
-  price: {
-    buy?: number;
-    rent?: {
-      daily: number;
-      weekly: number;
-      monthly: number;
-    };
-    securityDeposit: number;
-  };
-  images: string[];
-  condition: string;
-  location: {
-    city: string;
-    area: string;
-  };
-  rating: number;
-  totalReviews: number;
-  views: number;
-  createdAt: string;
-  category: string;
-  type: 'buy' | 'rent' | 'both';
-}
+import { fetchMarketplaceListings } from '@/api/endpoints/listing';
+import type { Listing } from '@/types';
 
 interface SimilarListingsProps {
   currentListingId: string;
 }
 
 const SimilarListings: React.FC<SimilarListingsProps> = ({ currentListingId }) => {
-  // Mock similar listings
-  const similarListings: Listing[] = [
-    {
-      id: '2',
-      title: 'Sony A7IV Mirrorless Camera with 28-70mm Lens',
-      price: {
-        buy: 165000,
-        rent: { daily: 1800, weekly: 9000, monthly: 32000 },
-        securityDeposit: 30000,
-      },
-      images: ['https://images.unsplash.com/photo-1516035069371-29a1b244cc32'],
-      condition: 'Excellent',
-      location: { city: 'Mumbai', area: 'Bandra' },
-      rating: 4.9,
-      totalReviews: 42,
-      views: 1250,
-      createdAt: '3 days ago',
-      category: 'Electronics',
-      type: 'both',
-    },
-    {
-      id: '3',
-      title: 'Canon EOS R5 Professional Camera Body',
-      price: {
-        buy: 285000,
-        rent: { daily: 2800, weekly: 14000, monthly: 52000 },
-        securityDeposit: 50000,
-      },
-      images: ['https://images.unsplash.com/photo-1502920917128-1aa500764cbd'],
-      condition: 'Like New',
-      location: { city: 'Delhi', area: 'Connaught Place' },
-      rating: 4.8,
-      totalReviews: 31,
-      views: 890,
-      createdAt: '1 week ago',
-      category: 'Electronics',
-      type: 'rent',
-    },
-    {
-      id: '4',
-      title: 'Nikon Z6 II with 24-70mm f/4 Lens Kit',
-      price: {
-        buy: 195000,
-        rent: { daily: 2200, weekly: 11000, monthly: 38000 },
-        securityDeposit: 35000,
-      },
-      images: ['https://images.unsplash.com/photo-1515372039744-b8f02a3ae446'],
-      condition: 'Good',
-      location: { city: 'Bangalore', area: 'Koramangala' },
-      rating: 4.7,
-      totalReviews: 28,
-      views: 760,
-      createdAt: '2 days ago',
-      category: 'Electronics',
-      type: 'both',
-    },
-    {
-      id: '5',
-      title: 'Fujifilm X-T4 Mirrorless Camera',
-      price: {
-        buy: 145000,
-        rent: { daily: 1600, weekly: 8000, monthly: 28000 },
-        securityDeposit: 25000,
-      },
-      images: ['https://images.unsplash.com/photo-1514905552197-0610a4d8fd73'],
-      condition: 'Excellent',
-      location: { city: 'Chennai', area: 'Adyar' },
-      rating: 4.9,
-      totalReviews: 37,
-      views: 1120,
-      createdAt: '5 days ago',
-      category: 'Electronics',
-      type: 'rent',
-    },
-  ];
+  const [similarListings, setSimilarListings] = useState<Listing[]>([])
+
+  useEffect(() => {
+    const loadSimilar = async () => {
+      try {
+        const listings = await fetchMarketplaceListings()
+        const filtered = listings.filter((listing) => listing.id !== currentListingId).slice(0, 4)
+        setSimilarListings(filtered)
+      } catch {
+        setSimilarListings([])
+      }
+    }
+
+    void loadSimilar()
+  }, [currentListingId])
 
   return (
     <div className="mt-12">
@@ -140,7 +56,7 @@ const SimilarListings: React.FC<SimilarListingsProps> = ({ currentListingId }) =
               />
               <div className="absolute top-3 left-3">
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  listing.condition === 'Like New' || listing.condition === 'Excellent'
+                  listing.condition === 'like_new' || listing.condition === 'new'
                     ? 'bg-green-100 text-green-800'
                     : 'bg-blue-100 text-blue-800'
                 }`}>
@@ -191,8 +107,8 @@ const SimilarListings: React.FC<SimilarListingsProps> = ({ currentListingId }) =
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1">
                     <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                    <span className="font-medium">{listing.rating}</span>
-                    <span>({listing.totalReviews})</span>
+                    <span className="font-medium">{listing.seller.rating || 0}</span>
+                    <span>(0)</span>
                   </div>
                   
                   <div className="flex items-center gap-1">

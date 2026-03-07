@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   Package, 
@@ -13,17 +13,22 @@ import {
   TrendingUp,
   PauseCircle,
   CheckCircle,
-  XCircle,
   Search,
   BarChart3
 } from 'lucide-react'
-import { mockListings } from '@/data/mockData'
+import { fetchUserListings } from '@/api/endpoints/listing'
+import { useAuth } from '@/contexts/AuthContext'
+import type { Listing } from '@/types'
 
 const MyListings: React.FC = () => {
+  const { currentUser } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [selectedListings, setSelectedListings] = useState<string[]>([])
+  const [listings, setListings] = useState<Listing[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const statusOptions = [
     { value: 'all', label: 'All Status' },
@@ -41,7 +46,33 @@ const MyListings: React.FC = () => {
     { value: 'both', label: 'Both' }
   ]
 
-  const filteredListings = mockListings.filter(listing => {
+  useEffect(() => {
+    const loadMyListings = async () => {
+      if (!currentUser) {
+        setListings([])
+        setIsLoading(false)
+        return
+      }
+
+      setIsLoading(true)
+      setLoadError(null)
+
+      try {
+        const data = await fetchUserListings(currentUser.uid)
+        setListings(data)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load listings.'
+        setLoadError(message)
+        setListings([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void loadMyListings()
+  }, [currentUser])
+
+  const filteredListings = listings.filter(listing => {
     const matchesSearch = listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          listing.description.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter === 'all' || listing.status === statusFilter
@@ -49,14 +80,14 @@ const MyListings: React.FC = () => {
     return matchesSearch && matchesStatus && matchesType
   })
 
-  const stats = {
-    total: mockListings.length,
-    active: mockListings.filter(l => l.status === 'active').length,
-    rented: mockListings.filter(l => l.status === 'rented').length,
-    sold: mockListings.filter(l => l.status === 'sold').length,
-    views: mockListings.reduce((sum, l) => sum + l.views, 0),
-    saves: mockListings.reduce((sum, l) => sum + l.saves, 0)
-  }
+  const stats = useMemo(() => ({
+    total: listings.length,
+    active: listings.filter(l => l.status === 'active').length,
+    rented: listings.filter(l => l.status === 'rented').length,
+    sold: listings.filter(l => l.status === 'sold').length,
+    views: listings.reduce((sum, l) => sum + l.views, 0),
+    saves: listings.reduce((sum, l) => sum + l.saves, 0)
+  }), [listings])
 
   const toggleSelectListing = (id: string) => {
     setSelectedListings(prev => 
@@ -274,7 +305,7 @@ const MyListings: React.FC = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
                           <img 
-                            src={listing.images[0]} 
+                            src={listing.images[0] || 'https://images.unsplash.com/photo-1484704849700-f032a568e944'} 
                             alt={listing.title}
                             className="w-16 h-16 rounded-lg object-cover"
                           />
@@ -383,14 +414,16 @@ const MyListings: React.FC = () => {
           </div>
 
           {/* Empty State */}
-          {filteredListings.length === 0 && (
+          {!isLoading && filteredListings.length === 0 && (
             <div className="text-center py-16">
               <div className="w-24 h-24 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-6">
                 <Package size={40} className="text-gray-400" />
               </div>
               <h3 className="text-xl font-semibold mb-4">No listings found</h3>
               <p className="text-gray-600 mb-8">
-                {searchQuery || statusFilter !== 'all' || typeFilter !== 'all' 
+                {loadError
+                  ? loadError
+                  : searchQuery || statusFilter !== 'all' || typeFilter !== 'all' 
                   ? 'Try adjusting your filters or search terms' 
                   : 'You haven\'t created any listings yet'}
               </p>
@@ -409,7 +442,7 @@ const MyListings: React.FC = () => {
             <div className="px-6 py-4 border-t border-gray-200">
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="text-sm text-gray-500">
-                  Showing {filteredListings.length} of {mockListings.length} listings
+                  Showing {filteredListings.length} of {listings.length} listings
                 </div>
                 <div className="flex items-center gap-2">
                   <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
