@@ -479,7 +479,7 @@ const CreateListing: React.FC = () => {
 
                   {(listingType === "buy" || listingType === "both") && (
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700">Sell Price (INR)</label>
+                      <label className="mb-2 block text-sm font-medium text-gray-700">Sell Price (PKR)</label>
                       <input
                         type="number"
                         min="0"
@@ -500,7 +500,7 @@ const CreateListing: React.FC = () => {
                     <>
                       <div className="grid gap-4 md:grid-cols-3">
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-gray-700">Daily Rate (INR)</label>
+                          <label className="mb-2 block text-sm font-medium text-gray-700">Daily Rate (PKR)</label>
                           <input
                             type="number"
                             min="0"
@@ -519,7 +519,7 @@ const CreateListing: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-gray-700">Weekly Rate (INR)</label>
+                          <label className="mb-2 block text-sm font-medium text-gray-700">Weekly Rate (PKR)</label>
                           <input
                             type="number"
                             min="0"
@@ -538,7 +538,7 @@ const CreateListing: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-gray-700">Monthly Rate (INR)</label>
+                          <label className="mb-2 block text-sm font-medium text-gray-700">Monthly Rate (PKR)</label>
                           <input
                             type="number"
                             min="0"
@@ -560,7 +560,7 @@ const CreateListing: React.FC = () => {
 
                       <div>
                         <label className="mb-2 block text-sm font-medium text-gray-700">
-                          Security Deposit (INR)
+                          Security Deposit (PKR)
                         </label>
                         <input
                           type="number"
@@ -685,11 +685,11 @@ const CreateListing: React.FC = () => {
                           <p className="mt-2 text-gray-600">{formData.description.slice(0, 140)}...</p>
                           <div className="mt-4 space-y-2">
                             {(listingType === "buy" || listingType === "both") && formData.price.buy ? (
-                              <div className="text-lg font-bold text-green-600">Sell: ₹{formData.price.buy}</div>
+                              <div className="text-lg font-bold text-green-600">Sell: PKR {parsePositiveNumber(formData.price.buy).toLocaleString()}</div>
                             ) : null}
                             {(listingType === "rent" || listingType === "both") && formData.price.rent.daily ? (
                               <div className="text-lg font-bold text-blue-600">
-                                Rent: ₹{formData.price.rent.daily}/day
+                                Rent: PKR {parsePositiveNumber(formData.price.rent.daily).toLocaleString()}/day
                               </div>
                             ) : null}
                           </div>

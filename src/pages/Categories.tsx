@@ -407,7 +407,7 @@ const Categories: React.FC = () => {
                 </div>
               </div>
               <p className="text-gray-700 mb-6">
-                Average monthly earnings of ₹25,000+ for vehicle owners on our platform
+                Average monthly earnings of PKR 25,000+ for vehicle owners on our platform
               </p>
               <Link 
                 to="/browse?category=vehicles"

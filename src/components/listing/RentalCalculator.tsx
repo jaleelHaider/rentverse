@@ -146,7 +146,7 @@ const RentalCalculator: React.FC<RentalCalculatorProps> = ({ listing }) => {
             </div>
           </div>
           <div className="flex items-center">
-            <span className="mr-3 text-gray-900">₹{listing.price.securityDeposit}</span>
+            <span className="mr-3 text-gray-900">PKR {listing.price.securityDeposit.toLocaleString()}</span>
             <button
               type="button"
               onClick={() => setIncludeDeposit(!includeDeposit)}
@@ -167,14 +167,14 @@ const RentalCalculator: React.FC<RentalCalculatorProps> = ({ listing }) => {
         <div className="border-t border-gray-200 pt-4 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Base price ({duration} {durationType}):</span>
-            <span className="font-medium">₹{totalWithoutDeposit.toLocaleString()}</span>
+            <span className="font-medium">PKR {totalWithoutDeposit.toLocaleString()}</span>
           </div>
           
           {discount > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Discount ({discount}%):</span>
               <span className="text-green-600 font-medium">
-                -₹{((getBasePrice() * duration * discount) / 100).toLocaleString()}
+                -PKR {((getBasePrice() * duration * discount) / 100).toLocaleString()}
               </span>
             </div>
           )}
@@ -183,7 +183,7 @@ const RentalCalculator: React.FC<RentalCalculatorProps> = ({ listing }) => {
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Security deposit:</span>
               <span className="text-blue-600 font-medium">
-                +₹{listing.price.securityDeposit.toLocaleString()}
+                +PKR {listing.price.securityDeposit.toLocaleString()}
               </span>
             </div>
           )}
@@ -192,12 +192,12 @@ const RentalCalculator: React.FC<RentalCalculatorProps> = ({ listing }) => {
             <div className="flex justify-between items-center">
               <div className="text-lg font-semibold text-gray-900">Total Amount</div>
               <div className="text-2xl font-bold text-blue-700">
-                ₹{calculatedPrice.toLocaleString()}
+                PKR {calculatedPrice.toLocaleString()}
               </div>
             </div>
             {includeDeposit && (
               <div className="text-xs text-gray-500 mt-1">
-                * ₹{listing.price.securityDeposit} deposit will be refunded after item return
+                * PKR {listing.price.securityDeposit.toLocaleString()} deposit will be refunded after item return
               </div>
             )}
           </div>
@@ -219,7 +219,7 @@ const RentalCalculator: React.FC<RentalCalculatorProps> = ({ listing }) => {
             <div className="flex items-center">
               <Tag className="h-4 w-4 text-green-600 mr-2" />
               <span className="text-sm text-green-700">
-                Save ₹{(listing.price.rent.daily * 30 - listing.price.rent.monthly).toLocaleString()} by choosing monthly rental
+                Save PKR {(listing.price.rent.daily * 30 - listing.price.rent.monthly).toLocaleString()} by choosing monthly rental
               </span>
             </div>
           </div>

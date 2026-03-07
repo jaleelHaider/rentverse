@@ -37,7 +37,7 @@ const UserDashboard: React.FC = () => {
     },
     { 
       title: 'Monthly Earnings', 
-      value: '₹45,820', 
+      value: 'PKR 45,820', 
       change: '+18% from last month', 
       icon: DollarSign,  // ✅ Just the component
       color: 'purple' as const,

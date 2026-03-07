@@ -186,7 +186,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
                     {listing.price.buy && (
                       <div className="flex items-center gap-3">
                         <div className="text-lg font-bold text-gray-900">
-                          PKR{listing.price.buy.toLocaleString()}
+                          PKR {listing.price.buy.toLocaleString()}
                         </div>
                         {isBoth && (
                           <span className="text-sm text-gray-500">or rent from</span>
@@ -199,14 +199,14 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-blue-600" />
                           <span className="font-medium text-blue-700">
-                            ₹{listing.price.rent.daily}/day
+                            PKR {listing.price.rent.daily.toLocaleString()}/day
                           </span>
                         </div>
                         <div className="text-sm text-gray-500">
-                          ₹{listing.price.rent.weekly}/week
+                          PKR {listing.price.rent.weekly.toLocaleString()}/week
                         </div>
                         <div className="text-sm text-gray-500">
-                          ₹{listing.price.rent.monthly}/month
+                          PKR {listing.price.rent.monthly.toLocaleString()}/month
                         </div>
                       </div>
                     )}
@@ -290,7 +290,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
         {(listing.price.securityDeposit ?? 0) > 0 && (
           <div className="absolute bottom-3 left-3">
             <span className="px-3 py-1 bg-black/70 text-white text-xs font-medium rounded-full">
-              Deposit: ₹{(listing.price.securityDeposit ?? 0).toLocaleString()}
+              Deposit: PKR {(listing.price.securityDeposit ?? 0).toLocaleString()}
             </span>
           </div>
         )}
@@ -333,7 +333,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">Buy Price</div>
               <div className="text-lg font-bold text-gray-900">
-                ₹{listing.price.buy.toLocaleString()}
+                PKR {listing.price.buy.toLocaleString()}
               </div>
             </div>
           )}
@@ -343,10 +343,10 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
               <div className="text-sm text-gray-600">Rent Price</div>
               <div className="text-right">
                 <div className="font-bold text-blue-700">
-                  ₹{listing.price.rent.daily}/day
+                  PKR {listing.price.rent.daily.toLocaleString()}/day
                 </div>
                 <div className="text-xs text-gray-500">
-                  ₹{listing.price.rent.weekly}/week • ₹{listing.price.rent.monthly}/month
+                  PKR {listing.price.rent.weekly.toLocaleString()}/week • PKR {listing.price.rent.monthly.toLocaleString()}/month
                 </div>
               </div>
             </div>

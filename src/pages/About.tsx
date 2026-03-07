@@ -97,7 +97,7 @@ const About: React.FC = () => {
               <div className="text-gray-600">Listings</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-primary-600 mb-2">₹10Cr+</div>
+              <div className="text-4xl font-bold text-primary-600 mb-2">PKR 10Cr+</div>
               <div className="text-gray-600">Transaction Value</div>
             </div>
             <div className="text-center">

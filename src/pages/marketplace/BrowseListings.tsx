@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { 
   Filter, 
   Grid, 
@@ -9,16 +10,100 @@ import {
 } from 'lucide-react'
 import ListingCard from '@/components/marketplace/ListingCard'
 import FilterSidebar from '@/components/marketplace/FilterSidebar'
+import type { MarketplaceFilters } from '@/components/marketplace/FilterSidebar'
 import { fetchMarketplaceListings } from '@/api/endpoints/listing'
 import type { Listing } from '@/types'
 
+const getListingBasePrice = (listing: Listing): number => {
+  const candidates = [listing.price.rent?.daily, listing.price.buy].filter(
+    (value): value is number => typeof value === 'number' && value > 0
+  )
+
+  if (!candidates.length) {
+    return 0
+  }
+
+  return Math.min(...candidates)
+}
+
+const computePriceBounds = (items: Listing[]): [number, number] => {
+  const prices = items
+    .map(getListingBasePrice)
+    .filter((value) => Number.isFinite(value) && value > 0)
+
+  if (!prices.length) {
+    return [0, 0]
+  }
+
+  return [Math.min(...prices), Math.max(...prices)]
+}
+
+const normalizePriceRangeForBounds = (
+  range: [number, number],
+  bounds: [number, number]
+): [number, number] => {
+  const [minBound, maxBound] = bounds
+
+  if (maxBound <= 0) {
+    return [0, 0]
+  }
+
+  const [currentMin, currentMax] = range
+  const isUnsetRange = currentMin === 0 && currentMax === 0
+  const isCompletelyOutOfBounds = currentMax < minBound || currentMin > maxBound
+
+  if (isUnsetRange || isCompletelyOutOfBounds) {
+    return [minBound, maxBound]
+  }
+
+  const nextMin = Math.min(Math.max(currentMin, minBound), maxBound)
+  const nextMax = Math.max(Math.min(currentMax, maxBound), nextMin)
+
+  return [nextMin, nextMax]
+}
+
+const buildDefaultFilters = (priceRange: [number, number]): MarketplaceFilters => ({
+  priceRange,
+  categories: [],
+  conditions: [],
+  locationRadius: 25,
+  sellerVerified: true,
+  instantBooking: false,
+  ratingMin: 0,
+})
+
+const normalizeCategory = (value: string): string => {
+  const key = value.trim().toLowerCase()
+  if (key === 'party') {
+    return 'events'
+  }
+  return key
+}
+
+const normalizeCondition = (value: string): string => {
+  const key = value.trim().toLowerCase().replace(/\s+/g, '_')
+  if (key === 'like_new' || key === 'excellent') {
+    return 'excellent'
+  }
+  if (key === 'needs_work' || key === 'poor') {
+    return 'needs_work'
+  }
+  if (key === 'fair') {
+    return 'fair'
+  }
+  return 'good'
+}
+
 const BrowseListings: React.FC = () => {
+  const [searchParams] = useSearchParams()
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showFilters, setShowFilters] = useState(false)
   const [sortBy, setSortBy] = useState('relevant')
   const [listings, setListings] = useState<Listing[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [appliedFilters, setAppliedFilters] = useState<MarketplaceFilters>(buildDefaultFilters([0, 0]))
+  const lastAppliedUrlCategoryRef = useRef<string | null>(null)
 
   const sortOptions = [
     { value: 'relevant', label: 'Most Relevant' },
@@ -47,28 +132,229 @@ const BrowseListings: React.FC = () => {
     void loadListings()
   }, [])
 
-  const sortedListings = useMemo(() => {
-    const getBasePrice = (listing: Listing): number => {
-      if (listing.price.rent?.daily) return listing.price.rent.daily
-      if (listing.price.buy) return listing.price.buy
-      return 0
+  const globalPriceBounds = useMemo<[number, number]>(() => computePriceBounds(listings), [listings])
+  const selectedCategoryFromUrl = useMemo(() => {
+    const rawCategory = searchParams.get('category')
+    if (!rawCategory) {
+      return null
     }
 
-    const items = [...listings]
+    const normalized = normalizeCategory(rawCategory)
+    return normalized || null
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!selectedCategoryFromUrl) {
+      lastAppliedUrlCategoryRef.current = null
+      return
+    }
+
+    if (lastAppliedUrlCategoryRef.current === selectedCategoryFromUrl) {
+      return
+    }
+
+    setAppliedFilters((prev) => {
+      const base = buildDefaultFilters(globalPriceBounds)
+      const nextCategoryFilters = [selectedCategoryFromUrl]
+      const [nextMin, nextMax] = normalizePriceRangeForBounds(base.priceRange, globalPriceBounds)
+
+      const nextFilters: MarketplaceFilters = {
+        ...prev,
+        ...base,
+        categories: nextCategoryFilters,
+        priceRange: [nextMin, nextMax],
+      }
+
+      return nextFilters
+    })
+
+    lastAppliedUrlCategoryRef.current = selectedCategoryFromUrl
+  }, [selectedCategoryFromUrl, globalPriceBounds])
+
+  const listingsMatchingNonPriceFilters = useMemo(() => {
+    return listings.filter((listing) => {
+      const listingCategory = normalizeCategory(listing.category)
+      const listingCondition = normalizeCondition(listing.condition)
+      const listingRating = listing.seller.rating || 0
+
+      if (appliedFilters.categories.length > 0 && !appliedFilters.categories.includes(listingCategory)) {
+        return false
+      }
+
+      if (appliedFilters.conditions.length > 0 && !appliedFilters.conditions.includes(listingCondition)) {
+        return false
+      }
+
+      if (appliedFilters.sellerVerified && !listing.seller.verified) {
+        return false
+      }
+
+      if (appliedFilters.ratingMin > 0 && listingRating < appliedFilters.ratingMin) {
+        return false
+      }
+
+      return true
+    })
+  }, [listings, appliedFilters.categories, appliedFilters.conditions, appliedFilters.sellerVerified, appliedFilters.ratingMin])
+
+  const dynamicPriceBounds = useMemo<[number, number]>(() => {
+    const scopedBounds = computePriceBounds(listingsMatchingNonPriceFilters)
+    if (scopedBounds[1] > 0) {
+      return scopedBounds
+    }
+    return globalPriceBounds
+  }, [listingsMatchingNonPriceFilters, globalPriceBounds])
+
+  useEffect(() => {
+    setAppliedFilters((prev) => {
+      const [nextMin, nextMax] = normalizePriceRangeForBounds(prev.priceRange, dynamicPriceBounds)
+
+      if (nextMin === prev.priceRange[0] && nextMax === prev.priceRange[1]) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        priceRange: [nextMin, nextMax],
+      }
+    })
+  }, [dynamicPriceBounds])
+
+  useEffect(() => {
+    if (!listings.length) {
+      return
+    }
+
+    setAppliedFilters((prev) => {
+      const noFiltersSelected =
+        prev.categories.length === 0 &&
+        prev.conditions.length === 0 &&
+        prev.locationRadius === 25 &&
+        prev.sellerVerified === true &&
+        prev.instantBooking === false &&
+        prev.ratingMin === 0 &&
+        prev.priceRange[0] === 0 &&
+        prev.priceRange[1] === 0
+
+      if (!noFiltersSelected) {
+        return prev
+      }
+
+      return buildDefaultFilters(globalPriceBounds)
+    })
+  }, [listings.length, globalPriceBounds])
+
+  const filteredListings = useMemo(() => {
+    return listings.filter((listing) => {
+      const listingPrice = getListingBasePrice(listing)
+      const listingCategory = normalizeCategory(listing.category)
+      const listingCondition = normalizeCondition(listing.condition)
+      const listingRating = listing.seller.rating || 0
+
+      if (listingPrice < appliedFilters.priceRange[0] || listingPrice > appliedFilters.priceRange[1]) {
+        return false
+      }
+
+      if (appliedFilters.categories.length > 0 && !appliedFilters.categories.includes(listingCategory)) {
+        return false
+      }
+
+      if (appliedFilters.conditions.length > 0 && !appliedFilters.conditions.includes(listingCondition)) {
+        return false
+      }
+
+      if (appliedFilters.sellerVerified && !listing.seller.verified) {
+        return false
+      }
+
+      if (appliedFilters.ratingMin > 0 && listingRating < appliedFilters.ratingMin) {
+        return false
+      }
+
+      // Instant booking and radius require additional server data not currently mapped.
+      return true
+    })
+  }, [listings, appliedFilters])
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const listing of listings) {
+      const key = normalizeCategory(listing.category)
+      counts[key] = (counts[key] || 0) + 1
+    }
+    return counts
+  }, [listings])
+
+  const conditionCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const listing of listings) {
+      const key = normalizeCondition(listing.condition)
+      counts[key] = (counts[key] || 0) + 1
+    }
+    return counts
+  }, [listings])
+
+  const sortedListings = useMemo(() => {
+    const items = [...filteredListings]
     if (sortBy === 'newest' || sortBy === 'relevant') {
       return items
     }
     if (sortBy === 'price_low') {
-      return items.sort((a, b) => getBasePrice(a) - getBasePrice(b))
+      return items.sort((a, b) => getListingBasePrice(a) - getListingBasePrice(b))
     }
     if (sortBy === 'price_high') {
-      return items.sort((a, b) => getBasePrice(b) - getBasePrice(a))
+      return items.sort((a, b) => getListingBasePrice(b) - getListingBasePrice(a))
     }
     if (sortBy === 'rating' || sortBy === 'trust') {
       return items.sort((a, b) => b.seller.trustScore - a.seller.trustScore)
     }
     return items
-  }, [listings, sortBy])
+  }, [filteredListings, sortBy])
+
+  const handleApplyFilters = (filters: MarketplaceFilters) => {
+    const listingsMatchingNewNonPriceFilters = listings.filter((listing) => {
+      const listingCategory = normalizeCategory(listing.category)
+      const listingCondition = normalizeCondition(listing.condition)
+      const listingRating = listing.seller.rating || 0
+
+      if (filters.categories.length > 0 && !filters.categories.includes(listingCategory)) {
+        return false
+      }
+
+      if (filters.conditions.length > 0 && !filters.conditions.includes(listingCondition)) {
+        return false
+      }
+
+      if (filters.sellerVerified && !listing.seller.verified) {
+        return false
+      }
+
+      if (filters.ratingMin > 0 && listingRating < filters.ratingMin) {
+        return false
+      }
+
+      return true
+    })
+
+    const nextBounds = computePriceBounds(listingsMatchingNewNonPriceFilters)
+    const fallbackBounds = nextBounds[1] > 0 ? nextBounds : globalPriceBounds
+    const [nextMin, nextMax] = normalizePriceRangeForBounds(filters.priceRange, fallbackBounds)
+
+    setAppliedFilters({
+      ...filters,
+      priceRange: [nextMin, nextMax],
+    })
+    setShowFilters(false)
+  }
+
+  const handleClearFilters = () => {
+    setAppliedFilters(buildDefaultFilters(globalPriceBounds))
+  }
+
+  const filterSidebarKey = useMemo(
+    () => JSON.stringify({ filters: appliedFilters, bounds: dynamicPriceBounds }),
+    [appliedFilters, dynamicPriceBounds]
+  )
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -155,7 +441,15 @@ const BrowseListings: React.FC = () => {
                 </button>
               </div>
             )}
-            <FilterSidebar />
+            <FilterSidebar
+              key={filterSidebarKey}
+              filters={appliedFilters}
+              priceBounds={dynamicPriceBounds}
+              onApplyFilters={handleApplyFilters}
+              onClearFilters={handleClearFilters}
+              categoryCounts={categoryCounts}
+              conditionCounts={conditionCounts}
+            />
           </div>
 
           {/* Listings Grid */}

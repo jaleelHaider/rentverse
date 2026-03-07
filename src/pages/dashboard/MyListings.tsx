@@ -351,12 +351,12 @@ const MyListings: React.FC = () => {
                         <div className="space-y-1">
                           {listing.price.buy && (
                             <div className="text-sm font-semibold text-green-600">
-                              ₹{listing.price.buy.toLocaleString()}
+                              PKR {listing.price.buy.toLocaleString()}
                             </div>
                           )}
                           {listing.price.rent && (
                             <div className="text-xs text-blue-600">
-                              ₹{listing.price.rent.daily}/day
+                              PKR {listing.price.rent.daily.toLocaleString()}/day
                             </div>
                           )}
                         </div>

@@ -62,7 +62,7 @@ const RecentActivity: React.FC<RecentActivityProps> = ({
       id: '2',
       type: 'payment',
       title: 'Payment Received',
-      description: '₹5,200 received for Sony A7III rental',
+      description: 'PKR 5,200 received for Sony A7III rental',
       time: '2 hours ago',
       amount: 5200,
     },
@@ -133,7 +133,7 @@ const RecentActivity: React.FC<RecentActivityProps> = ({
                       <span className="text-sm text-gray-500">{activity.time}</span>
                       {activity.amount && (
                         <div className="text-lg font-bold text-green-600 mt-1">
-                          ₹{activity.amount.toLocaleString()}
+                          PKR {activity.amount.toLocaleString()}
                         </div>
                       )}
                     </div>

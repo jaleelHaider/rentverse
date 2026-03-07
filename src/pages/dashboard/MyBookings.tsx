@@ -85,6 +85,7 @@ interface SaleBooking {
 type Booking = RentalBooking | SaleBooking
 
 const MyBookings: React.FC = () => {
+  const [bookingView, setBookingView] = useState<'incoming' | 'outgoing'>('incoming')
   const [activeTab, setActiveTab] = useState<'upcoming' | 'active' | 'past' | 'cancelled'>('upcoming')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -188,7 +189,17 @@ const MyBookings: React.FC = () => {
     }
   ]
 
-  const filteredBookings = bookings.filter(booking => {
+  const matchesBookingView = (booking: Booking) => {
+    if (booking.type === 'rental') {
+      return bookingView === 'incoming' ? booking.ownerName === 'You' : booking.ownerName !== 'You'
+    }
+
+    return bookingView === 'incoming' ? booking.sellerName === 'You' : booking.sellerName !== 'You'
+  }
+
+  const bookingsForView = bookings.filter(matchesBookingView)
+
+  const filteredBookings = bookingsForView.filter(booking => {
     const matchesTab = 
       (activeTab === 'upcoming' && booking.status === 'upcoming') ||
       (activeTab === 'active' && booking.status === 'active') ||
@@ -201,23 +212,23 @@ const MyBookings: React.FC = () => {
   })
 
   const tabs = [
-    { id: 'upcoming', label: 'Upcoming', count: bookings.filter(b => b.status === 'upcoming').length },
-    { id: 'active', label: 'Active', count: bookings.filter(b => b.status === 'active').length },
-    { id: 'past', label: 'Past', count: bookings.filter(b => b.status === 'completed').length },
-    { id: 'cancelled', label: 'Cancelled', count: bookings.filter(b => b.status === 'cancelled').length }
+    { id: 'upcoming', label: 'Upcoming', count: bookingsForView.filter(b => b.status === 'upcoming').length },
+    { id: 'active', label: 'Active', count: bookingsForView.filter(b => b.status === 'active').length },
+    { id: 'past', label: 'Past', count: bookingsForView.filter(b => b.status === 'completed').length },
+    { id: 'cancelled', label: 'Cancelled', count: bookingsForView.filter(b => b.status === 'cancelled').length }
   ]
 
   const stats = {
-    totalEarnings: bookings.reduce((sum, booking) => {
+    totalEarnings: bookingsForView.reduce((sum, booking) => {
       if (booking.type === 'rental') {
         return sum + (booking.status === 'completed' ? booking.pricing.totalAmount : 0)
       } else {
         return sum + (booking.status === 'completed' ? booking.totalAmount : 0)
       }
     }, 0),
-    upcomingBookings: bookings.filter(b => b.status === 'upcoming').length,
-    activeBookings: bookings.filter(b => b.status === 'active').length,
-    completedTransactions: bookings.filter(b => b.status === 'completed').length
+    upcomingBookings: bookingsForView.filter(b => b.status === 'upcoming').length,
+    activeBookings: bookingsForView.filter(b => b.status === 'active').length,
+    completedTransactions: bookingsForView.filter(b => b.status === 'completed').length
   }
 
   const getStatusColor = (status: string) => {
@@ -265,7 +276,11 @@ const MyBookings: React.FC = () => {
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
-              <p className="text-gray-600">Manage your rentals and purchases</p>
+              <p className="text-gray-600">
+                {bookingView === 'incoming'
+                  ? 'Bookings and purchases on your listings'
+                  : 'Rentals and purchases you made from others'}
+              </p>
             </div>
             
             <div className="flex items-center gap-4">
@@ -284,7 +299,7 @@ const MyBookings: React.FC = () => {
           <div className="card p-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-gray-900">₹{stats.totalEarnings.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-gray-900">PKR {stats.totalEarnings.toLocaleString()}</div>
                 <div className="text-sm text-gray-500">Total Earnings</div>
               </div>
               <DollarSign className="text-green-500" size={24} />
@@ -324,6 +339,35 @@ const MyBookings: React.FC = () => {
 
         {/* Tabs & Controls */}
         <div className="card p-6 mb-8">
+          <div className="flex items-center gap-2 mb-6">
+            <button
+              onClick={() => {
+                setBookingView('incoming')
+                setActiveTab('upcoming')
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                bookingView === 'incoming'
+                  ? 'bg-primary-600 text-white border-primary-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              My Items Booked
+            </button>
+            <button
+              onClick={() => {
+                setBookingView('outgoing')
+                setActiveTab('upcoming')
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                bookingView === 'outgoing'
+                  ? 'bg-primary-600 text-white border-primary-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              My Bookings/Purchases
+            </button>
+          </div>
+
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
             <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
               {tabs.map(tab => (
@@ -425,7 +469,7 @@ const MyBookings: React.FC = () => {
                       
                       <div className="text-right">
                         <div className="text-2xl font-bold text-gray-900">
-                          ₹{booking.type === 'rental' 
+                          PKR {booking.type === 'rental' 
                             ? booking.pricing.totalAmount.toLocaleString() 
                             : booking.totalAmount.toLocaleString()}
                         </div>
@@ -467,11 +511,11 @@ const MyBookings: React.FC = () => {
                           <div className="space-y-1">
                             <div className="flex justify-between">
                               <span className="text-gray-600">Item Price:</span>
-                              <span className="font-medium">₹{booking.amount.toLocaleString()}</span>
+                              <span className="font-medium">PKR {booking.amount.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Platform Fee:</span>
-                              <span className="font-medium">₹{booking.platformFee.toLocaleString()}</span>
+                              <span className="font-medium">PKR {booking.platformFee.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Completed:</span>
@@ -574,10 +618,21 @@ const MyBookings: React.FC = () => {
               </div>
               <h3 className="text-xl font-semibold mb-4">No bookings found</h3>
               <p className="text-gray-600 mb-8">
-                {activeTab === 'upcoming' ? 'You have no upcoming bookings' :
-                 activeTab === 'active' ? 'You have no active bookings' :
-                 activeTab === 'past' ? 'You have no past bookings' :
-                 'You have no cancelled bookings'}
+                {activeTab === 'upcoming'
+                  ? bookingView === 'incoming'
+                    ? 'No one has created an upcoming booking on your listings yet'
+                    : 'You have no upcoming bookings or purchases'
+                  : activeTab === 'active'
+                    ? bookingView === 'incoming'
+                      ? 'You have no active bookings on your listings'
+                      : 'You have no active bookings right now'
+                    : activeTab === 'past'
+                      ? bookingView === 'incoming'
+                        ? 'No completed bookings found for your listings'
+                        : 'You have no completed bookings or purchases'
+                      : bookingView === 'incoming'
+                        ? 'No cancelled bookings found for your listings'
+                        : 'You have no cancelled bookings'}
               </p>
               {activeTab === 'upcoming' && (
                 <Link 

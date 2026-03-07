@@ -1,38 +1,106 @@
-import React, { useState } from 'react';
-import { X, Filter, Check, DollarSign, Star, Shield, Package } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, Filter, Check, Star, Shield, Package } from 'lucide-react';
 
-interface FilterSidebarProps {
-  onApplyFilters?: (filters: any) => void;
-  onClearFilters?: () => void;
+export interface MarketplaceFilters {
+  priceRange: [number, number];
+  categories: string[];
+  conditions: string[];
+  locationRadius: number;
+  sellerVerified: boolean;
+  instantBooking: boolean;
+  ratingMin: number;
 }
 
-const FilterSidebar: React.FC<FilterSidebarProps> = ({ onApplyFilters, onClearFilters }) => {
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
-  const [locationRadius, setLocationRadius] = useState<number>(25);
-  const [sellerVerified, setSellerVerified] = useState<boolean>(true);
-  const [instantBooking, setInstantBooking] = useState<boolean>(false);
-  const [ratingMin, setRatingMin] = useState<number>(4);
+interface FilterSidebarProps {
+  filters?: MarketplaceFilters;
+  priceBounds?: [number, number];
+  onApplyFilters?: (filters: MarketplaceFilters) => void;
+  onClearFilters?: () => void;
+  categoryCounts?: Record<string, number>;
+  conditionCounts?: Record<string, number>;
+}
+
+const buildDefaultFilters = (priceBounds: [number, number]): MarketplaceFilters => ({
+  priceRange: priceBounds,
+  categories: [],
+  conditions: [],
+  locationRadius: 25,
+  sellerVerified: true,
+  instantBooking: false,
+  ratingMin: 0,
+});
+
+const FilterSidebar: React.FC<FilterSidebarProps> = ({
+  filters,
+  priceBounds = [0, 0],
+  onApplyFilters,
+  onClearFilters,
+  categoryCounts = {},
+  conditionCounts = {},
+}) => {
+  const initialFilters = filters ?? buildDefaultFilters(priceBounds);
+
+  const [priceRange, setPriceRange] = useState<[number, number]>(initialFilters.priceRange);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialFilters.categories);
+  const [selectedConditions, setSelectedConditions] = useState<string[]>(initialFilters.conditions);
+  const [locationRadius, setLocationRadius] = useState<number>(initialFilters.locationRadius);
+  const [sellerVerified, setSellerVerified] = useState<boolean>(initialFilters.sellerVerified);
+  const [instantBooking, setInstantBooking] = useState<boolean>(initialFilters.instantBooking);
+  const [ratingMin, setRatingMin] = useState<number>(initialFilters.ratingMin);
+
+  const hasPriceBounds = priceBounds[1] > 0;
+  const isPriceRangeModified = hasPriceBounds
+    ? priceRange[0] !== priceBounds[0] || priceRange[1] !== priceBounds[1]
+    : false;
+
+  const activeFilterCount = useMemo(() => {
+    return (
+      selectedCategories.length +
+      selectedConditions.length +
+      (isPriceRangeModified ? 1 : 0) +
+      (ratingMin > 0 ? 1 : 0) +
+      (!sellerVerified ? 1 : 0) +
+      (instantBooking ? 1 : 0)
+    );
+  }, [selectedCategories.length, selectedConditions.length, isPriceRangeModified, ratingMin, sellerVerified, instantBooking]);
 
   const categories = [
-    { id: 'electronics', label: 'Electronics', count: 324 },
-    { id: 'vehicles', label: 'Vehicles', count: 189 },
-    { id: 'tools', label: 'Tools & Equipment', count: 256 },
-    { id: 'party', label: 'Party & Events', count: 142 },
-    { id: 'sports', label: 'Sports & Outdoors', count: 218 },
-    { id: 'creative', label: 'Creative', count: 176 },
-    { id: 'home', label: 'Home & Garden', count: 312 },
-    { id: 'other', label: 'Other', count: 98 },
+    { id: 'electronics', label: 'Electronics' },
+    { id: 'vehicles', label: 'Vehicles' },
+    { id: 'home', label: 'Home & Garden' },
+    { id: 'entertainment', label: 'Entertainment' },
+    { id: 'music', label: 'Music & Instruments' },
+    { id: 'sports', label: 'Sports & Outdoors' },
+    { id: 'events', label: 'Party & Events' },
+    { id: 'tools', label: 'Tools & Equipment' },
+    { id: 'creative', label: 'Creative' },
+    { id: 'gaming', label: 'Gaming' },
+    { id: 'kitchen', label: 'Kitchen & Dining' },
+    { id: 'photography', label: 'Photography' },
+    { id: 'other', label: 'Other' },
   ];
 
   const conditions = [
-    { id: 'new', label: 'Brand New', count: 45 },
-    { id: 'excellent', label: 'Like New', count: 123 },
-    { id: 'good', label: 'Good', count: 345 },
-    { id: 'fair', label: 'Fair', count: 189 },
-    { id: 'poor', label: 'Needs Work', count: 67 },
+    { id: 'excellent', label: 'Like New / Excellent' },
+    { id: 'good', label: 'Good' },
+    { id: 'fair', label: 'Fair' },
+    { id: 'needs_work', label: 'Needs Work' },
   ];
+
+  const getCategoryCount = (categoryId: string): number => {
+    const normalizedId = categoryId.toLowerCase();
+    if (normalizedId === 'events') {
+      return (categoryCounts.party || 0) + (categoryCounts.events || 0);
+    }
+    return categoryCounts[normalizedId] || 0;
+  };
+
+  const getConditionCount = (conditionId: string): number => {
+    if (conditionId === 'excellent') {
+      return (conditionCounts.excellent || 0) + (conditionCounts.like_new || 0) + (conditionCounts.like_new_or_excellent || 0);
+    }
+    return conditionCounts[conditionId] || 0;
+  };
 
   const handleCategoryToggle = (categoryId: string) => {
     setSelectedCategories(prev =>
@@ -51,8 +119,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ onApplyFilters, onClearFi
   };
 
   const handleApplyFilters = () => {
-    const filters = {
-      priceRange,
+    const minPrice = Math.min(Math.max(priceRange[0], priceBounds[0]), priceBounds[1]);
+    const maxPrice = Math.max(Math.min(priceRange[1], priceBounds[1]), minPrice);
+
+    const filters: MarketplaceFilters = {
+      priceRange: [minPrice, maxPrice],
       categories: selectedCategories,
       conditions: selectedConditions,
       locationRadius,
@@ -67,13 +138,15 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ onApplyFilters, onClearFi
   };
 
   const handleClearFilters = () => {
-    setPriceRange([0, 10000]);
-    setSelectedCategories([]);
-    setSelectedConditions([]);
-    setLocationRadius(25);
-    setSellerVerified(true);
-    setInstantBooking(false);
-    setRatingMin(4);
+    const defaults = buildDefaultFilters(priceBounds);
+
+    setPriceRange(defaults.priceRange);
+    setSelectedCategories(defaults.categories);
+    setSelectedConditions(defaults.conditions);
+    setLocationRadius(defaults.locationRadius);
+    setSellerVerified(defaults.sellerVerified);
+    setInstantBooking(defaults.instantBooking);
+    setRatingMin(defaults.ratingMin);
     
     if (onClearFilters) {
       onClearFilters();
@@ -87,7 +160,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ onApplyFilters, onClearFi
           <Filter className="h-5 w-5" />
           Filters
         </h3>
-        {(selectedCategories.length > 0 || selectedConditions.length > 0 || priceRange[1] < 10000) && (
+        {(selectedCategories.length > 0 || selectedConditions.length > 0 || isPriceRangeModified) && (
           <button
             onClick={handleClearFilters}
             className="text-sm text-primary-600 hover:text-primary-800"
@@ -100,46 +173,56 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ onApplyFilters, onClearFi
       {/* Price Range */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="font-medium text-gray-900 flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
-            Price Range
-          </h4>
+          <h4 className="font-medium text-gray-900">Price Range</h4>
           <span className="text-sm font-medium text-primary-600">
-            PKR{priceRange[0].toLocaleString()} - PKR{priceRange[1].toLocaleString()}
+            PKR {priceRange[0].toLocaleString()} - PKR {priceRange[1].toLocaleString()}
           </span>
         </div>
         
         <div className="space-y-3">
           <input
             type="range"
-            min="0"
-            max="10000"
+            min={priceBounds[0]}
+            max={priceBounds[1]}
             step="100"
             value={priceRange[0]}
-            onChange={(e) => setPriceRange([parseInt(e.target.value), priceRange[1]])}
+            onChange={(e) => {
+              const nextMin = parseInt(e.target.value, 10);
+              setPriceRange([nextMin, Math.max(nextMin, priceRange[1])]);
+            }}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            disabled={!hasPriceBounds}
           />
           <input
             type="range"
-            min="0"
-            max="10000"
+            min={priceBounds[0]}
+            max={priceBounds[1]}
             step="100"
             value={priceRange[1]}
-            onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+            onChange={(e) => {
+              const nextMax = parseInt(e.target.value, 10);
+              setPriceRange([Math.min(priceRange[0], nextMax), nextMax]);
+            }}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            disabled={!hasPriceBounds}
           />
         </div>
         
         <div className="grid grid-cols-3 gap-2">
-          {[500, 2000, 5000].map((price) => (
+          {[0.25, 0.5, 0.75].map((fraction) => {
+            const rangeSize = Math.max(priceBounds[1] - priceBounds[0], 0);
+            const cap = Math.round(priceBounds[0] + rangeSize * fraction);
+            return (
             <button
-              key={price}
-              onClick={() => setPriceRange([0, price])}
+              key={fraction}
+              onClick={() => setPriceRange([priceBounds[0], cap])}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+              disabled={!hasPriceBounds}
             >
-              Under PKR{price}
+              Under PKR {cap.toLocaleString()}
             </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -168,7 +251,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ onApplyFilters, onClearFi
                 </span>
               </div>
               <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                {category.count}
+                {getCategoryCount(category.id)}
               </span>
             </label>
           ))}
@@ -197,7 +280,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ onApplyFilters, onClearFi
                 </span>
               </div>
               <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                {condition.count}
+                {getConditionCount(condition.id)}
               </span>
             </label>
           ))}
@@ -284,7 +367,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ onApplyFilters, onClearFi
           </h4>
           <div className="flex items-center">
             <Star className="h-4 w-4 text-yellow-400 fill-current" />
-            <span className="ml-1 font-medium">{ratingMin}.0+</span>
+            <span className="ml-1 font-medium">{ratingMin <= 0 ? 'Any' : `${ratingMin}.0+`}</span>
           </div>
         </div>
         
@@ -312,15 +395,22 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ onApplyFilters, onClearFi
       >
         <Check className="h-5 w-5" />
         Apply Filters
-        {(selectedCategories.length > 0 || selectedConditions.length > 0 || priceRange[1] < 10000) && (
+        {activeFilterCount > 0 && (
           <span className="bg-white/20 px-2 py-1 rounded-full text-xs">
-            {selectedCategories.length + selectedConditions.length + (priceRange[1] < 10000 ? 1 : 0)}
+            {activeFilterCount}
           </span>
         )}
       </button>
 
+      <button
+        onClick={handleClearFilters}
+        className="w-full py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50"
+      >
+        Clear Filters
+      </button>
+
       {/* Active Filters */}
-      {(selectedCategories.length > 0 || selectedConditions.length > 0 || priceRange[1] < 10000) && (
+      {(selectedCategories.length > 0 || selectedConditions.length > 0 || isPriceRangeModified) && (
         <div className="pt-6 border-t border-gray-200">
           <h4 className="font-medium text-gray-900 mb-3">Active Filters</h4>
           <div className="flex flex-wrap gap-2">
@@ -360,11 +450,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ onApplyFilters, onClearFi
               );
             })}
             
-            {priceRange[1] < 10000 && (
+            {isPriceRangeModified && (
               <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
-                Up to PKR{priceRange[1]}
+                PKR {priceRange[0].toLocaleString()} - PKR {priceRange[1].toLocaleString()}
                 <button
-                  onClick={() => setPriceRange([0, 10000])}
+                  onClick={() => setPriceRange(priceBounds)}
                   className="hover:text-purple-900"
                 >
                   <X className="h-3 w-3" />

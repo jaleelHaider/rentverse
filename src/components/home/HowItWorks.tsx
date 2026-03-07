@@ -119,7 +119,7 @@ const HowItWorks: React.FC = () => {
               <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-green-600 font-bold">✓</span>
               </div>
-              <span>Earn up to ₹30,000/month from items you already own</span>
+              <span>Earn up to PKR 30,000/month from items you already own</span>
             </li>
             <li className="flex items-start gap-3">
               <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">

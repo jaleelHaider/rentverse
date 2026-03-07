@@ -197,7 +197,7 @@ const ListingDetail: React.FC = () => {
                       <div className="mb-4">
                         <div className="text-sm text-gray-500 mb-1">Buy Now Price</div>
                         <div className="text-3xl font-bold text-gray-900">
-                          ₹{listing.price.buy?.toLocaleString()}
+                          PKR {listing.price.buy?.toLocaleString()}
                         </div>
                       </div>
                     ) : null}
@@ -208,19 +208,19 @@ const ListingDetail: React.FC = () => {
                         <div className="grid grid-cols-3 gap-4">
                           <div className="text-center p-4 bg-blue-50 rounded-lg">
                             <div className="text-2xl font-bold text-blue-700">
-                              ₹{listing.price.rent?.daily}
+                              PKR {listing.price.rent?.daily?.toLocaleString()}
                             </div>
                             <div className="text-sm text-blue-600">per day</div>
                           </div>
                           <div className="text-center p-4 bg-blue-50 rounded-lg">
                             <div className="text-2xl font-bold text-blue-700">
-                              ₹{listing.price.rent?.weekly}
+                              PKR {listing.price.rent?.weekly?.toLocaleString()}
                             </div>
                             <div className="text-sm text-blue-600">per week</div>
                           </div>
                           <div className="text-center p-4 bg-blue-50 rounded-lg">
                             <div className="text-2xl font-bold text-blue-700">
-                              ₹{listing.price.rent?.monthly}
+                              PKR {listing.price.rent?.monthly?.toLocaleString()}
                             </div>
                             <div className="text-sm text-blue-600">per month</div>
                           </div>
@@ -236,7 +236,7 @@ const ListingDetail: React.FC = () => {
                     </div>
                     <div className="text-sm text-gray-500">Security Deposit</div>
                     <div className="text-lg font-semibold text-gray-900">
-                      ₹{listing.price.securityDeposit?.toLocaleString()}
+                      PKR {listing.price.securityDeposit?.toLocaleString()}
                     </div>
                   </div>
                 </div>
@@ -324,7 +324,7 @@ const ListingDetail: React.FC = () => {
               
               {listing.type === 'buy' || listing.type === 'both' ? (
                 <button className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition-shadow">
-                  Buy Now - ₹{listing.price.buy?.toLocaleString()}
+                  Buy Now - PKR {listing.price.buy?.toLocaleString()}
                 </button>
               ) : null}
               

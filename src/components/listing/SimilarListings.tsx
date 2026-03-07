@@ -80,18 +80,18 @@ const SimilarListings: React.FC<SimilarListingsProps> = ({ currentListingId }) =
               <div className="mb-3">
                 {listing.type === 'buy' || listing.type === 'both' ? (
                   <div className="text-lg font-bold text-gray-900">
-                    ₹{listing.price.buy?.toLocaleString()}
+                    PKR {listing.price.buy?.toLocaleString()}
                   </div>
                 ) : null}
                 
                 {listing.type === 'rent' || listing.type === 'both' ? (
                   <div className="text-sm text-gray-600">
                     <span className="font-medium text-gray-900">
-                      ₹{listing.price.rent?.daily}/day
+                      PKR {listing.price.rent?.daily?.toLocaleString()}/day
                     </span>
                     <span className="mx-2">•</span>
                     <span className="font-medium text-gray-900">
-                      ₹{listing.price.rent?.weekly}/week
+                      PKR {listing.price.rent?.weekly?.toLocaleString()}/week
                     </span>
                   </div>
                 ) : null}
@@ -136,7 +136,7 @@ const SimilarListings: React.FC<SimilarListingsProps> = ({ currentListingId }) =
       <div className="mt-8 p-6 bg-gray-50 rounded-xl">
         <h3 className="font-semibold text-gray-900 mb-4">Looking for something specific?</h3>
         <div className="flex flex-wrap gap-2">
-          {['Under ₹2,000/day', 'With Prime Lens', 'Brand New', 'Video Capable', 'Lightweight'].map((filter) => (
+          {['Under PKR 2,000/day', 'With Prime Lens', 'Brand New', 'Video Capable', 'Lightweight'].map((filter) => (
             <button
               key={filter}
               className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50"

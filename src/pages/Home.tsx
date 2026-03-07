@@ -97,7 +97,7 @@ const Home: React.FC = () => {
                 <div className="text-gray-600">Satisfaction Rate</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary-600">₹10Cr+</div>
+                <div className="text-3xl font-bold text-primary-600">PKR 10Cr+</div>
                 <div className="text-gray-600">Transactions</div>
               </div>
             </div>

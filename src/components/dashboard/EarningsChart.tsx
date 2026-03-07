@@ -91,7 +91,7 @@ const EarningsChart: React.FC<EarningsChartProps> = ({
               <div>
                 <p className="text-sm text-blue-700">Total Earnings</p>
                 <h4 className="text-2xl font-bold text-blue-900">
-                  ₹{totalEarnings.toLocaleString()}
+                  PKR {totalEarnings.toLocaleString()}
                 </h4>
               </div>
             </div>
@@ -125,12 +125,12 @@ const EarningsChart: React.FC<EarningsChartProps> = ({
               <div>
                 <p className="text-sm text-purple-700">Avg. per Booking</p>
                 <h4 className="text-2xl font-bold text-purple-900">
-                  ₹{Math.round(totalEarnings / totalBookings).toLocaleString()}
+                  PKR {Math.round(totalEarnings / totalBookings).toLocaleString()}
                 </h4>
               </div>
             </div>
             <p className="text-xs text-purple-600 mt-2">
-              Highest: ₹4,500 • Lowest: ₹1,800
+              Highest: PKR 4,500 • Lowest: PKR 1,800
             </p>
           </div>
         </div>
@@ -173,7 +173,7 @@ const EarningsChart: React.FC<EarningsChartProps> = ({
                       style={{ height: `${barHeight}%` }}
                     >
                       <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                        ₹{item.earnings.toLocaleString()}
+                        PKR {item.earnings.toLocaleString()}
                       </div>
                     </div>
                     
@@ -202,8 +202,8 @@ const EarningsChart: React.FC<EarningsChartProps> = ({
             <div>
               <h5 className="text-sm font-medium text-gray-700 mb-2">Performance Insights</h5>
               <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Peak earnings in July: ₹85,000</li>
-                <li>• Average booking value: ₹3,450</li>
+                <li>• Peak earnings in July: PKR 85,000</li>
+                <li>• Average booking value: PKR 3,450</li>
                 <li>• 88% customer satisfaction rate</li>
               </ul>
             </div>

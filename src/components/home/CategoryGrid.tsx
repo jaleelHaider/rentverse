@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Camera, 
@@ -14,6 +14,7 @@ import {
   Smartphone,
   Gamepad2
 } from 'lucide-react';
+import { fetchActiveListingCategoryCounts } from '@/api/endpoints/listing';
 
 interface Category {
   id: string;
@@ -21,10 +22,28 @@ interface Category {
   icon: React.ReactNode;
   description: string;
   color: string;
-  itemCount: number;
+  aliases?: string[];
 }
 
 const CategoryGrid: React.FC = () => {
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
+  const [isLoadingCounts, setIsLoadingCounts] = useState(true);
+
+  useEffect(() => {
+    const loadCategoryCounts = async () => {
+      try {
+        const counts = await fetchActiveListingCategoryCounts();
+        setCategoryCounts(counts);
+      } catch {
+        setCategoryCounts({});
+      } finally {
+        setIsLoadingCounts(false);
+      }
+    };
+
+    void loadCategoryCounts();
+  }, []);
+
   const categories: Category[] = [
     {
       id: 'electronics',
@@ -32,7 +51,7 @@ const CategoryGrid: React.FC = () => {
       icon: <Smartphone className="h-8 w-8" />,
       description: 'Phones, laptops, cameras, gadgets',
       color: 'bg-blue-100 text-blue-600',
-      itemCount: 2450,
+      aliases: ['electronics'],
     },
     {
       id: 'vehicles',
@@ -40,7 +59,7 @@ const CategoryGrid: React.FC = () => {
       icon: <Car className="h-8 w-8" />,
       description: 'Cars, bikes, scooters',
       color: 'bg-green-100 text-green-600',
-      itemCount: 890,
+      aliases: ['vehicles'],
     },
     {
       id: 'home',
@@ -48,7 +67,7 @@ const CategoryGrid: React.FC = () => {
       icon: <Home className="h-8 w-8" />,
       description: 'Furniture, appliances, decor',
       color: 'bg-orange-100 text-orange-600',
-      itemCount: 1560,
+      aliases: ['home'],
     },
     {
       id: 'entertainment',
@@ -56,7 +75,7 @@ const CategoryGrid: React.FC = () => {
       icon: <Tv className="h-8 w-8" />,
       description: 'TVs, projectors, gaming',
       color: 'bg-purple-100 text-purple-600',
-      itemCount: 1230,
+      aliases: ['entertainment'],
     },
     {
       id: 'music',
@@ -64,7 +83,7 @@ const CategoryGrid: React.FC = () => {
       icon: <Music className="h-8 w-8" />,
       description: 'Guitars, keyboards, DJ gear',
       color: 'bg-pink-100 text-pink-600',
-      itemCount: 780,
+      aliases: ['music'],
     },
     {
       id: 'sports',
@@ -72,7 +91,7 @@ const CategoryGrid: React.FC = () => {
       icon: <Dumbbell className="h-8 w-8" />,
       description: 'Gym equipment, camping gear',
       color: 'bg-red-100 text-red-600',
-      itemCount: 980,
+      aliases: ['sports'],
     },
     {
       id: 'events',
@@ -80,7 +99,7 @@ const CategoryGrid: React.FC = () => {
       icon: <PartyPopper className="h-8 w-8" />,
       description: 'Decorations, sound systems',
       color: 'bg-yellow-100 text-yellow-600',
-      itemCount: 540,
+      aliases: ['events', 'party'],
     },
     {
       id: 'tools',
@@ -88,7 +107,7 @@ const CategoryGrid: React.FC = () => {
       icon: <Briefcase className="h-8 w-8" />,
       description: 'Power tools, garden equipment',
       color: 'bg-teal-100 text-teal-600',
-      itemCount: 1670,
+      aliases: ['tools'],
     },
     {
       id: 'creative',
@@ -96,7 +115,7 @@ const CategoryGrid: React.FC = () => {
       icon: <Palette className="h-8 w-8" />,
       description: 'Art supplies, cameras, lighting',
       color: 'bg-indigo-100 text-indigo-600',
-      itemCount: 420,
+      aliases: ['creative'],
     },
     {
       id: 'gaming',
@@ -104,7 +123,7 @@ const CategoryGrid: React.FC = () => {
       icon: <Gamepad2 className="h-8 w-8" />,
       description: 'Consoles, VR, accessories',
       color: 'bg-cyan-100 text-cyan-600',
-      itemCount: 1120,
+      aliases: ['gaming'],
     },
     {
       id: 'kitchen',
@@ -112,7 +131,7 @@ const CategoryGrid: React.FC = () => {
       icon: <Coffee className="h-8 w-8" />,
       description: 'Appliances, dinnerware',
       color: 'bg-amber-100 text-amber-600',
-      itemCount: 890,
+      aliases: ['kitchen'],
     },
     {
       id: 'photography',
@@ -120,13 +139,27 @@ const CategoryGrid: React.FC = () => {
       icon: <Camera className="h-8 w-8" />,
       description: 'Cameras, lenses, drones',
       color: 'bg-violet-100 text-violet-600',
-      itemCount: 640,
+      aliases: ['photography'],
     },
   ];
 
+  const categoriesWithCounts = useMemo(
+    () =>
+      categories.map((category) => {
+        const aliases = category.aliases && category.aliases.length > 0 ? category.aliases : [category.id];
+        const itemCount = aliases.reduce((sum, alias) => sum + (categoryCounts[alias.toLowerCase()] || 0), 0);
+
+        return {
+          ...category,
+          itemCount,
+        };
+      }),
+    [categories, categoryCounts]
+  );
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-      {categories.map((category) => (
+      {categoriesWithCounts.map((category) => (
         <Link
           key={category.id}
           to={`/browse?category=${category.id}`}
@@ -140,7 +173,7 @@ const CategoryGrid: React.FC = () => {
           <p className="text-sm text-gray-600 mb-3 line-clamp-2">{category.description}</p>
           
           <div className="text-xs font-medium text-gray-500">
-            {category.itemCount.toLocaleString()} items
+            {isLoadingCounts ? 'Loading...' : `${category.itemCount.toLocaleString()} items`}
           </div>
           
           <div className="mt-4 pt-4 border-t border-gray-100">

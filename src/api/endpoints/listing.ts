@@ -398,3 +398,32 @@ export const fetchSellerDerivedStats = async (
 		memberSince,
 	};
 };
+
+interface CategoryCountRow {
+	category: string | null;
+}
+
+export const fetchActiveListingCategoryCounts = async (): Promise<Record<string, number>> => {
+	const { data, error } = await supabase
+		.from("listings")
+		.select("category")
+		.eq("status", "active");
+
+	if (error) {
+		throw new Error(error.message || "Failed to fetch category counts");
+	}
+
+	const rows = (data || []) as CategoryCountRow[];
+	const counts: Record<string, number> = {};
+
+	for (const row of rows) {
+		const key = (row.category || "").trim().toLowerCase();
+		if (!key) {
+			continue;
+		}
+
+		counts[key] = (counts[key] || 0) + 1;
+	}
+
+	return counts;
+};
