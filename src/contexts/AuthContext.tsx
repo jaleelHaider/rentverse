@@ -1,11 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { 
-  User,
-  onAuthStateChanged,
-  updateProfile
-} from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db, logoutUser, resendVerificationEmail } from '../firebase/firebase';
+import type { User } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
+import {
+  getUserProfile,
+  loginWithEmail,
+  logoutUser,
+  refreshCurrentUser,
+  registerWithEmail,
+  resendVerificationEmail,
+  resetPassword as resetPasswordEmail,
+  upsertUserProfile,
+} from '../supabase/supabase';
 
 interface UserData {
   uid: string;
@@ -13,7 +18,6 @@ interface UserData {
   email: string;
   phone?: string;
   city?: string;
-  emailVerified: boolean;
   profileCompleted: boolean;
   createdAt: string;
   lastLogin: string;
@@ -34,6 +38,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   resendVerification: () => Promise<void>;
+  resendVerificationToEmail: (email: string) => Promise<void>;
+  refreshAuthUser: () => Promise<boolean>;
   updateUserProfile: (data: Partial<UserData>) => Promise<void>;
   isEmailVerified: boolean;
   isAuthenticated: boolean;
@@ -60,48 +66,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user ?? null;
       setCurrentUser(user);
-      setIsEmailVerified(user?.emailVerified || false);
-      
-      if (user) {
-        // Fetch user data from Firestore
+      setIsEmailVerified(Boolean(user?.email_confirmed_at));
+
+      if (!user) {
+        setUserData(null);
+        setIsLoading(false);
+        return;
+      }
+
+      void (async () => {
         try {
-          const docRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(docRef);
-          
-          if (docSnap.exists()) {
-            setUserData(docSnap.data() as UserData);
+          const profile = await getUserProfile(user.id);
+
+          if (profile) {
+            setUserData({
+              uid: profile.id,
+              name: profile.name,
+              email: profile.email,
+              phone: profile.phone,
+              city: profile.city,
+              profileCompleted: profile.profileCompleted,
+              createdAt: profile.createdAt,
+              lastLogin: profile.lastLogin,
+            });
           } else {
-            // Create user document if it doesn't exist
-            const userData: UserData = {
-              uid: user.uid,
-              name: user.displayName || '',
+            const fallbackName = (user.user_metadata?.full_name as string | undefined) || '';
+            const now = new Date().toISOString();
+
+            await upsertUserProfile(user.id, {
+              name: fallbackName,
               email: user.email || '',
-              emailVerified: user.emailVerified,
               profileCompleted: false,
-              createdAt: new Date().toISOString(),
-              lastLogin: new Date().toISOString()
-            };
-            
-            await setDoc(docRef, userData);
-            setUserData(userData);
+              lastLogin: now,
+            });
+
+            setUserData({
+              uid: user.id,
+              name: fallbackName,
+              email: user.email || '',
+              profileCompleted: false,
+              createdAt: now,
+              lastLogin: now,
+            });
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
+        } finally {
+          setIsLoading(false);
         }
-      } else {
-        setUserData(null);
-      }
-      
-      setIsLoading(false);
+      })();
     });
 
-    return unsubscribe;
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { loginWithEmail } = await import('../firebase/firebase');
     await loginWithEmail(email, password);
   };
 
@@ -112,26 +138,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     password: string;
     city: string;
   }) => {
-    const { registerWithEmail } = await import('../firebase/firebase');
-    const result = await registerWithEmail(userData.email, userData.password, userData.name);
-    
-    // Save additional user data to Firestore
-    if (result.user) {
-      const userDoc = doc(db, 'users', result.user.uid);
-      await setDoc(userDoc, {
-        uid: result.user.uid,
-        name: userData.name,
-        email: userData.email,
-        phone: userData.phone,
-        city: userData.city,
-        emailVerified: false,
-        profileCompleted: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      }, { merge: true });
-    }
-    
-    return result;
+    return registerWithEmail(userData.email, userData.password, userData.name, {
+      phone: userData.phone,
+      city: userData.city,
+    });
   };
 
   const logout = async () => {
@@ -139,26 +149,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const resetPassword = async (email: string) => {
-    const { resetPassword } = await import('../firebase/firebase');
-    await resetPassword(email);
+    await resetPasswordEmail(email);
   };
 
   const resendVerification = async () => {
     if (!currentUser) throw new Error('No user logged in');
-    await resendVerificationEmail(currentUser);
+    if (!currentUser.email) throw new Error('No email found for current user');
+    await resendVerificationEmail(currentUser.email);
+  };
+
+  const resendVerificationToEmail = async (email: string) => {
+    await resendVerificationEmail(email);
+  };
+
+  const refreshAuthUser = async () => {
+    const refreshedUser = await refreshCurrentUser();
+    setCurrentUser(refreshedUser);
+    const verified = Boolean(refreshedUser?.email_confirmed_at);
+    setIsEmailVerified(verified);
+    return verified;
   };
 
   const updateUserProfile = async (data: Partial<UserData>) => {
     if (!currentUser) throw new Error('No user logged in');
-    
-    // Update Firebase Auth profile
+
     if (data.name) {
-      await updateProfile(currentUser, { displayName: data.name });
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: data.name },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to update auth profile');
+      }
     }
-    
-    // Update Firestore
-    const userDoc = doc(db, 'users', currentUser.uid);
-    await setDoc(userDoc, data, { merge: true });
+
+    await upsertUserProfile(currentUser.id, {
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      city: data.city,
+      profileCompleted: data.profileCompleted,
+      lastLogin: data.lastLogin,
+    });
     
     // Update local state
     setUserData(prev => prev ? { ...prev, ...data } : null);
@@ -173,6 +205,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     resetPassword,
     resendVerification,
+    resendVerificationToEmail,
+    refreshAuthUser,
     updateUserProfile,
     isEmailVerified,
     isAuthenticated: !!currentUser

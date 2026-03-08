@@ -11,7 +11,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState('')
   const [isResending, setIsResending] = useState(false)
   
-  const { login } = useAuth()
+  const { login, resendVerificationToEmail } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const locationState = location.state as
@@ -46,13 +46,13 @@ const Login: React.FC = () => {
   const handleResendVerification = async () => {
     try {
       setIsResending(true)
-      // Note: In real implementation, you would call resendVerification API
+      await resendVerificationToEmail(email)
       setError('Verification email resent! Please check your inbox.')
       setTimeout(() => {
         setError('')
       }, 3000)
-    } catch (err) {
-      setError('Failed to resend verification email')
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend verification email')
     } finally {
       setIsResending(false)
     }

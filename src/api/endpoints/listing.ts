@@ -39,7 +39,7 @@ interface ListingRow {
 	location_lng: number | null;
 	features: string[] | null;
 	specifications: Record<string, string> | null;
-	owner_firebase_uid: string;
+	owner_user_id: string;
 	owner_name: string | null;
 	created_at: string;
 	updated_at: string;
@@ -162,7 +162,7 @@ const mapRowToMarketplaceListing = (row: ListingRow): Listing => {
 		specifications: row.specifications || {},
 		features: row.features || [],
 		seller: {
-			id: row.owner_firebase_uid,
+			id: row.owner_user_id,
 			name: row.owner_name || "Owner",
 			avatar: "",
 			rating: 0,
@@ -197,12 +197,12 @@ const sanitizeFileName = (fileName: string): string => {
 	return fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
 };
 
-const buildImagePath = (firebaseUid: string, listingId: string, file: File): string => {
+const buildImagePath = (userId: string, listingId: string, file: File): string => {
 	const extension = file.name.split(".").pop() || "jpg";
 	const safeName = sanitizeFileName(file.name.replace(`.${extension}`, ""));
 	const unique = `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
 
-	return `${firebaseUid}/${listingId}/${unique}-${safeName}.${extension}`;
+	return `${userId}/${listingId}/${unique}-${safeName}.${extension}`;
 };
 
 const parseListingStatus = (listingType: ListingType): string => {
@@ -219,7 +219,7 @@ export const createListingWithImages = async (
 	const { data: listingRow, error: listingError } = await supabase
 		.from("listings")
 		.insert({
-			owner_firebase_uid: owner.firebaseUid,
+			owner_user_id: owner.userId,
 			owner_email: owner.email,
 			owner_name: owner.name,
 			title: payload.title,
@@ -268,7 +268,7 @@ export const createListingWithImages = async (
 
 	for (let index = 0; index < payload.images.length; index += 1) {
 		const image = payload.images[index];
-		const path = buildImagePath(owner.firebaseUid, listingId, image);
+		const path = buildImagePath(owner.userId, listingId, image);
 
 		const { error: uploadError } = await supabase.storage
 			.from(LISTING_IMAGES_BUCKET)
@@ -317,7 +317,7 @@ export const fetchMarketplaceListings = async (): Promise<Listing[]> => {
 	const { data, error } = await supabase
 		.from("listings")
 		.select(
-			"id,title,description,category,sub_category,condition,listing_type,buy_price,rent_daily_price,rent_weekly_price,rent_monthly_price,security_deposit,location_address,location_city,location_state,location_lat,location_lng,features,specifications,owner_firebase_uid,owner_name,created_at,updated_at,status,listing_images(public_url,is_primary,display_order)"
+			"id,title,description,category,sub_category,condition,listing_type,buy_price,rent_daily_price,rent_weekly_price,rent_monthly_price,security_deposit,location_address,location_city,location_state,location_lat,location_lng,features,specifications,owner_user_id,owner_name,created_at,updated_at,status,listing_images(public_url,is_primary,display_order)"
 		)
 		.eq("status", "active")
 		.order("created_at", { ascending: false });
@@ -329,13 +329,13 @@ export const fetchMarketplaceListings = async (): Promise<Listing[]> => {
 	return ((data || []) as ListingRow[]).map(mapRowToMarketplaceListing);
 };
 
-export const fetchUserListings = async (firebaseUid: string): Promise<Listing[]> => {
+export const fetchUserListings = async (userId: string): Promise<Listing[]> => {
 	const { data, error } = await supabase
 		.from("listings")
 		.select(
-			"id,title,description,category,sub_category,condition,listing_type,buy_price,rent_daily_price,rent_weekly_price,rent_monthly_price,security_deposit,location_address,location_city,location_state,location_lat,location_lng,features,specifications,owner_firebase_uid,owner_name,created_at,updated_at,status,listing_images(public_url,is_primary,display_order)"
+			"id,title,description,category,sub_category,condition,listing_type,buy_price,rent_daily_price,rent_weekly_price,rent_monthly_price,security_deposit,location_address,location_city,location_state,location_lat,location_lng,features,specifications,owner_user_id,owner_name,created_at,updated_at,status,listing_images(public_url,is_primary,display_order)"
 		)
-		.eq("owner_firebase_uid", firebaseUid)
+		.eq("owner_user_id", userId)
 		.order("created_at", { ascending: false });
 
 	if (error) {
@@ -349,7 +349,7 @@ export const fetchMarketplaceListingById = async (listingId: string): Promise<Li
 	const { data, error } = await supabase
 		.from("listings")
 		.select(
-			"id,title,description,category,sub_category,condition,listing_type,buy_price,rent_daily_price,rent_weekly_price,rent_monthly_price,security_deposit,location_address,location_city,location_state,location_lat,location_lng,features,specifications,owner_firebase_uid,owner_name,created_at,updated_at,status,listing_images(public_url,is_primary,display_order)"
+			"id,title,description,category,sub_category,condition,listing_type,buy_price,rent_daily_price,rent_weekly_price,rent_monthly_price,security_deposit,location_address,location_city,location_state,location_lat,location_lng,features,specifications,owner_user_id,owner_name,created_at,updated_at,status,listing_images(public_url,is_primary,display_order)"
 		)
 		.eq("id", listingId)
 		.single();
@@ -367,12 +367,12 @@ interface SellerStatsRow {
 }
 
 export const fetchSellerDerivedStats = async (
-	ownerFirebaseUid: string
+	ownerUserId: string
 ): Promise<{ activeListings: number; memberSince: string }> => {
 	const { data, error } = await supabase
 		.from("listings")
 		.select("status,created_at")
-		.eq("owner_firebase_uid", ownerFirebaseUid);
+		.eq("owner_user_id", ownerUserId);
 
 	if (error) {
 		throw new Error(error.message || "Failed to fetch seller stats");

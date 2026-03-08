@@ -22,8 +22,11 @@ import Specifications from '@/components/listing/Specifications'
 import SimilarListings from '@/components/listing/SimilarListings'
 import { fetchMarketplaceListingById, fetchSellerDerivedStats } from '@/api/endpoints/listing'
 import type { Listing } from '@/types'
+import { useChatNavigation } from '@/hooks/useChatNavigation'
+import { useAuth } from '@/contexts/AuthContext'
 
 const ListingDetail: React.FC = () => {
+  const { currentUser } = useAuth()
   const { id } = useParams<{ id: string }>()
   const [selectedTab, setSelectedTab] = useState('details')
   const [isSaved, setIsSaved] = useState(false)
@@ -31,6 +34,8 @@ const ListingDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [sellerStats, setSellerStats] = useState({ activeListings: 0, memberSince: '0' })
+  const { openListingChat, isStartingChat } = useChatNavigation()
+  const isOwnListing = Boolean(listing && currentUser && listing.seller.id === currentUser.id)
 
   useEffect(() => {
     const loadListing = async () => {
@@ -311,7 +316,14 @@ const ListingDetail: React.FC = () => {
           {/* Right Column - Action Panel */}
           <div className="space-y-6">
             {/* Seller Info */}
-            <SellerInfo seller={sellerForDisplay} />
+            <SellerInfo
+              seller={sellerForDisplay}
+              onMessageSeller={() => {
+                void openListingChat({ listingId: listing.id, sellerId: listing.seller.id })
+              }}
+              isMessageLoading={isStartingChat}
+              disableMessageButton={isOwnListing}
+            />
             
             {/* Rental Calculator */}
             {listing.type === 'rent' || listing.type === 'both' ? (
@@ -335,9 +347,16 @@ const ListingDetail: React.FC = () => {
               ) : null}
               
               <div className="flex gap-3">
-                <button className="flex-1 flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void openListingChat({ listingId: listing.id, sellerId: listing.seller.id })
+                  }}
+                  disabled={isStartingChat}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
                   <MessageCircle size={20} />
-                  Chat
+                  {isStartingChat ? 'Opening...' : 'Chat'}
                 </button>
                 <button className="flex-1 flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">
                   <Phone size={20} />

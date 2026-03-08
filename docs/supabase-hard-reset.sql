@@ -1,50 +1,40 @@
-# Complete Migration: Firebase to Supabase (Auth + Listings + Storage)
+-- HARD RESET: Supabase Auth + Listings + Storage metadata
+-- This will delete existing listing/image/profile data and recreate schema for Supabase-only auth.
+-- Run in Supabase SQL Editor.
 
-This guide matches the current codebase after migration:
-
-## 1) Install and Environment
-
-Dependencies:
-
-Environment variables in `.env`:
-
-```env
-VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
-```
-
-Restart Vite after editing `.env`.
-
-## 2) Supabase Auth Dashboard Settings
-
-In Supabase Dashboard:
-1. Go to `Authentication` -> `Providers` -> `Email` and enable it.
-2. Keep `Confirm email` enabled (recommended).
-3. Go to `Authentication` -> `URL Configuration` and add:
-   - Site URL: your app URL (`http://localhost:5173` for dev)
-   - Redirect URLs:
-     - `http://localhost:5173/verify-email`
-     - `http://localhost:5173/reset-password`
-
-## 3) Create Core Tables
-
-Run this SQL in Supabase SQL Editor.
-
-Important:
-If you see `ERROR: column "owner_user_id" does not exist`, your `listings` table already exists from old schema.
-In that case, run the reset block below first, then run the full create script.
-
-```sql
--- Reset old listing tables (deletes old listing data)
-drop table if exists public.listing_images cascade;
-drop table if exists public.listings cascade;
-drop table if exists public.profiles cascade;
-```
-
-```sql
 create extension if not exists pgcrypto;
 
-create table if not exists public.profiles (
+-- Drop old policies if they exist
+DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_insert_own" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles;
+
+DROP POLICY IF EXISTS "listings_read_public_or_owner" ON public.listings;
+DROP POLICY IF EXISTS "listings_insert_own" ON public.listings;
+DROP POLICY IF EXISTS "listings_update_own" ON public.listings;
+DROP POLICY IF EXISTS "listings_delete_own" ON public.listings;
+
+DROP POLICY IF EXISTS "listing_images_public_read" ON public.listing_images;
+DROP POLICY IF EXISTS "listing_images_insert_owner" ON public.listing_images;
+DROP POLICY IF EXISTS "listing_images_update_owner" ON public.listing_images;
+DROP POLICY IF EXISTS "listing_images_delete_owner" ON public.listing_images;
+
+DROP POLICY IF EXISTS "storage_listing_images_public_read" ON storage.objects;
+DROP POLICY IF EXISTS "storage_listing_images_auth_insert" ON storage.objects;
+DROP POLICY IF EXISTS "storage_listing_images_auth_update" ON storage.objects;
+DROP POLICY IF EXISTS "storage_listing_images_auth_delete" ON storage.objects;
+
+-- Drop old tables/triggers completely
+DROP TRIGGER IF EXISTS profiles_set_updated_at ON public.profiles;
+DROP TRIGGER IF EXISTS listings_set_updated_at ON public.listings;
+DROP FUNCTION IF EXISTS public.set_updated_at();
+
+DROP TABLE IF EXISTS public.listing_images CASCADE;
+DROP TABLE IF EXISTS public.listings CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
+-- Recreate tables with Supabase-auth user linkage
+create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   name text,
   email text,
@@ -56,7 +46,7 @@ create table if not exists public.profiles (
   last_login timestamptz not null default now()
 );
 
-create table if not exists public.listings (
+create table public.listings (
   id uuid primary key default gen_random_uuid(),
   owner_user_id uuid not null references auth.users(id) on delete cascade,
   owner_email text,
@@ -90,7 +80,7 @@ create table if not exists public.listings (
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.listing_images (
+create table public.listing_images (
   id uuid primary key default gen_random_uuid(),
   listing_id uuid not null references public.listings(id) on delete cascade,
   storage_path text not null,
@@ -100,11 +90,11 @@ create table if not exists public.listing_images (
   created_at timestamptz not null default now()
 );
 
-create index if not exists profiles_email_idx on public.profiles(email);
-create index if not exists listings_owner_user_id_idx on public.listings(owner_user_id);
-create index if not exists listings_category_idx on public.listings(category);
-create index if not exists listings_created_at_idx on public.listings(created_at desc);
-create index if not exists listing_images_listing_id_idx on public.listing_images(listing_id);
+create index profiles_email_idx on public.profiles(email);
+create index listings_owner_user_id_idx on public.listings(owner_user_id);
+create index listings_category_idx on public.listings(category);
+create index listings_created_at_idx on public.listings(created_at desc);
+create index listing_images_listing_id_idx on public.listing_images(listing_id);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -116,28 +106,17 @@ begin
 end;
 $$;
 
-drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
 before update on public.profiles
 for each row
 execute function public.set_updated_at();
 
-drop trigger if exists listings_set_updated_at on public.listings;
 create trigger listings_set_updated_at
 before update on public.listings
 for each row
 execute function public.set_updated_at();
-```
 
-## 4) Create Storage Bucket
-
-1. Go to `Storage`.
-2. Create bucket `listing-images`.
-3. If you want direct public URLs, keep it public.
-
-## 5) Enable RLS and Add Policies
-
-```sql
+-- RLS
 alter table public.profiles enable row level security;
 alter table public.listings enable row level security;
 alter table public.listing_images enable row level security;
@@ -219,11 +198,8 @@ using (
     where l.id = listing_id and l.owner_user_id = auth.uid()
   )
 );
-```
 
-Storage policies:
-
-```sql
+-- Storage object policies for listing-images bucket
 create policy "storage_listing_images_public_read"
 on storage.objects
 for select
@@ -247,55 +223,3 @@ on storage.objects
 for delete
 to authenticated
 using (bucket_id = 'listing-images');
-```
-
-## 6) Migrate Old `owner_firebase_uid` Column (If Exists)
-
-```sql
-alter table public.listings add column if not exists owner_user_id uuid;
-
-update public.listings
-set owner_user_id = nullif(owner_firebase_uid, '')::uuid
-where owner_user_id is null
-  and owner_firebase_uid is not null;
-
-create index if not exists listings_owner_user_id_idx on public.listings(owner_user_id);
-
-```
-
-## 7) App-Level Changes Done
-
-1. `src/firebase/firebase.ts` was renamed and migrated to `src/supabase/supabase.ts`.
-2. Auth Context now uses Supabase Auth session events.
-3. Login/Register/Verify flows now use Supabase Auth.
-4. Listing ownership now uses `owner_user_id` and `currentUser.id`.
-
-## 8) Remove Firebase
-
-Run:
-
-```bash
-npm uninstall firebase
-```
-
-Then remove leftover Firebase env keys/config from your project.
-
-## 9) Verification Checklist
-
-1. Register a user and verify email.
-2. Login and check protected routes.
-3. Create listing with images.
-4. Confirm DB rows in `profiles`, `listings`, `listing_images`.
-5. Confirm files in `listing-images/<user_id>/<listing_id>/...`.
-6. Open `My Listings` and verify only your data appears.
-
-## 10) Root Fix For `owner_user_id does not exist`
-
-If you want a full clean reset (delete old listings and remove any old Firebase-era schema):
-
-1. Run SQL file `docs/supabase-hard-reset.sql` in Supabase SQL Editor.
-2. Go to Storage -> bucket `listing-images` and delete all old files.
-3. If bucket is missing, create `listing-images` again.
-4. Restart app and login with a new Supabase account.
-
-This reset ensures your DB has `owner_user_id` and no old `owner_firebase_uid` dependency.

@@ -13,6 +13,7 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import VerifyEmail from './pages/auth/VerifyEmail'
 import ForgotPassword from './pages/auth/ForgotPassword'
+import Inbox from './pages/chat/inbox'
 import About from './pages/About.tsx'
 import HowItWorks from './pages/HowItWorks'
 import Contact from './pages/Contact'
@@ -82,6 +83,11 @@ function App() {
           <Route path="/create-listing" element={
             <ProtectedRoute requireEmailVerification>
               <CreateListing />
+            </ProtectedRoute>
+          } />
+          <Route path="/messages" element={
+            <ProtectedRoute requireEmailVerification>
+              <Inbox />
             </ProtectedRoute>
           } />
           

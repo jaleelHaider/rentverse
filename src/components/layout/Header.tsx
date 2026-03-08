@@ -5,6 +5,7 @@ import {
   User, 
   Heart, 
   Bell, 
+  MessageSquare,
   ChevronDown, 
   Menu, 
   X,
@@ -32,7 +33,7 @@ const Header: React.FC = () => {
 
   const displayName =
     userData?.name?.trim() ||
-    currentUser?.displayName?.trim() ||
+    ((currentUser?.user_metadata?.full_name as string | undefined)?.trim()) ||
     currentUser?.email?.split('@')[0] ||
     'User'
 
@@ -97,7 +98,7 @@ const Header: React.FC = () => {
   return (
     <header className="sticky top-0 z-50 bg-white shadow-md border-b border-gray-200">
        {/* Email Verification Alert - Only show if user exists AND email is NOT verified */}
-      {currentUser && currentUser.emailVerified === false && (
+      {currentUser && !isEmailVerified && (
         <div className="bg-yellow-50 border-b border-yellow-200 py-2">
           <div className="container-custom flex items-center justify-center gap-2 text-sm">
             <AlertCircle size={16} className="text-yellow-600" />
@@ -208,9 +209,20 @@ const Header: React.FC = () => {
                 <span className="text-sm">Saved</span>
               </button>
               
-              <button className="hidden md:flex items-center gap-2 text-gray-700 hover:text-primary-600 relative">
+              <Link
+                to={currentUser ? '/messages' : '/login'}
+                className="hidden md:inline-flex items-center justify-center text-gray-700 hover:text-primary-600 relative"
+                aria-label="Open messages"
+              >
+                <MessageSquare size={22} />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary-600 rounded-full"></span>
+              </Link>
+
+              <button
+                className="hidden md:inline-flex items-center justify-center text-gray-700 hover:text-primary-600 relative"
+                aria-label="Open notifications"
+              >
                 <Bell size={22} />
-                <span className="text-sm">Notifications</span>
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
 

@@ -58,7 +58,7 @@ const MyListings: React.FC = () => {
       setLoadError(null)
 
       try {
-        const data = await fetchUserListings(currentUser.uid)
+        const data = await fetchUserListings(currentUser.id)
         setListings(data)
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load listings.'

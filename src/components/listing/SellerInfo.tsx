@@ -14,9 +14,17 @@ interface SellerInfoProps {
     totalListings: number;
     avatar?: string;
   };
+  onMessageSeller?: () => void;
+  isMessageLoading?: boolean;
+  disableMessageButton?: boolean;
 }
 
-const SellerInfo: React.FC<SellerInfoProps> = ({ seller }) => {
+const SellerInfo: React.FC<SellerInfoProps> = ({
+  seller,
+  onMessageSeller,
+  isMessageLoading = false,
+  disableMessageButton = false,
+}) => {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
       <div className="flex items-center gap-4 mb-6">
@@ -97,9 +105,14 @@ const SellerInfo: React.FC<SellerInfoProps> = ({ seller }) => {
 
       {/* Action Buttons */}
       <div className="space-y-3">
-        <button className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+        <button
+          type="button"
+          onClick={onMessageSeller}
+          disabled={isMessageLoading || disableMessageButton || !onMessageSeller}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
           <MessageCircle className="h-5 w-5" />
-          Message Seller
+          {disableMessageButton ? 'Your Listing' : isMessageLoading ? 'Opening...' : 'Message Seller'}
         </button>
         
         <button className="w-full flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50">

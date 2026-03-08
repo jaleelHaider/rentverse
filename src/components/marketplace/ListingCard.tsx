@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Star, Heart, Calendar, Eye, Shield, CheckCircle, Clock } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useChatNavigation } from '@/hooks/useChatNavigation';
 
 interface Listing {
   id: string;
@@ -27,6 +29,7 @@ interface Listing {
   category: string;
   type: 'buy' | 'rent' | 'both';
   seller: {
+    id: string;
     name: string;
     verified: boolean;
   };
@@ -40,8 +43,11 @@ interface ListingCardProps {
 
 const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
   const [isSaved, setIsSaved] = React.useState(false);
+  const { currentUser } = useAuth();
+  const { openListingChat, isStartingChat } = useChatNavigation();
   const rating = listing.rating ?? 0;
   const totalReviews = listing.totalReviews ?? 0;
+  const isOwnListing = currentUser?.id === listing.seller.id;
 
   // Determine if it's a rent, buy, or both listing
   const isRentOnly = listing.type === 'rent';
@@ -219,8 +225,18 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
                     >
                       View Details
                     </Link>
-                    <button className="px-6 py-3 border border-primary-600 text-primary-600 rounded-lg font-medium hover:bg-primary-50">
-                      Contact
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void openListingChat({
+                          listingId: listing.id,
+                          sellerId: listing.seller.id,
+                        });
+                      }}
+                      disabled={isStartingChat || isOwnListing}
+                      className="px-6 py-3 border border-primary-600 text-primary-600 rounded-lg font-medium hover:bg-primary-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isOwnListing ? 'Your Listing' : isStartingChat ? 'Opening...' : 'Contact'}
                     </button>
                   </div>
                 </div>
@@ -373,8 +389,18 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
           >
             View Details
           </Link>
-          <button className="py-2 border border-primary-600 text-primary-600 rounded-lg font-medium hover:bg-primary-50">
-            Contact
+          <button
+            type="button"
+            onClick={() => {
+              void openListingChat({
+                listingId: listing.id,
+                sellerId: listing.seller.id,
+              });
+            }}
+            disabled={isStartingChat || isOwnListing}
+            className="py-2 border border-primary-600 text-primary-600 rounded-lg font-medium hover:bg-primary-50 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isOwnListing ? 'Your Listing' : isStartingChat ? 'Opening...' : 'Contact'}
           </button>
         </div>
       </div>

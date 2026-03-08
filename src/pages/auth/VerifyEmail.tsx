@@ -16,7 +16,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 
 const VerifyEmail: React.FC = () => {
-  const { currentUser, resendVerification, logout } = useAuth();
+  const { currentUser, resendVerification, logout, refreshAuthUser, isEmailVerified } = useAuth();
   const [isSending, setIsSending] = useState(false);
   const [isSent, setIsSent] = useState(false);
   const [error, setError] = useState('');
@@ -47,11 +47,10 @@ const VerifyEmail: React.FC = () => {
     try {
       setIsChecking(true);
       setError('');
-      
-      // Reload user to check verification status
-      await currentUser?.reload();
-      
-      if (currentUser?.emailVerified) {
+
+      const verified = await refreshAuthUser();
+
+      if (verified) {
         setVerificationSuccess(true);
         
         // Start countdown for automatic redirect
@@ -84,7 +83,7 @@ const VerifyEmail: React.FC = () => {
   };
 
   const handleGoToDashboard = () => {
-    navigate('./dashboard');
+    navigate('/dashboard');
   };
 
   const handleGoToHome = () => {
@@ -97,11 +96,11 @@ const VerifyEmail: React.FC = () => {
 
   // Auto-check verification status when component mounts
   useEffect(() => {
-    if (currentUser?.emailVerified) {
+    if (isEmailVerified) {
       setVerificationSuccess(true);
       navigate(from, { replace: true });
     }
-  }, [currentUser, navigate, from]);
+  }, [isEmailVerified, navigate, from]);
 
   if (verificationSuccess) {
     return (

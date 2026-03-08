@@ -236,9 +236,12 @@ const CreateListing: React.FC = () => {
       };
 
       await createListingWithImages(payload, {
-        firebaseUid: currentUser.uid,
+        userId: currentUser.id,
         email: currentUser.email || userData?.email || "",
-        name: currentUser.displayName || userData?.name || "Unknown user",
+        name:
+          (currentUser.user_metadata?.full_name as string | undefined) ||
+          userData?.name ||
+          "Unknown user",
       });
 
       navigate("/my-listings");

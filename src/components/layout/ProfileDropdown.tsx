@@ -19,7 +19,7 @@ import {
   Shield,
   AlertCircle
 } from 'lucide-react'
-import { User } from 'firebase/auth'
+import type { User } from '@supabase/supabase-js'
 
 interface UserData {
   uid: string;
@@ -27,7 +27,6 @@ interface UserData {
   email: string;
   phone?: string;
   city?: string;
-  emailVerified: boolean;
   profileCompleted: boolean;
   createdAt: string;
   lastLogin: string;
@@ -50,7 +49,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
 }) => {
   const displayName =
     userData?.name?.trim() ||
-    currentUser?.displayName?.trim() ||
+    ((currentUser?.user_metadata?.full_name as string | undefined)?.trim()) ||
     currentUser?.email?.split('@')[0] ||
     'User'
 
