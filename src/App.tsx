@@ -6,6 +6,7 @@ import Home from './pages/Home.tsx'
 import BrowseListings from './pages/marketplace/BrowseListings'
 import ListingDetail from './pages/marketplace/ListingDetail'
 import CreateListing from './pages/marketplace/CreateListing'
+import Order from './pages/marketplace/Order'
 import UserDashboard from './pages/dashboard/UserDashboard'
 import MyListings from './pages/dashboard/MyListings.tsx'
 import MyBookings from './pages/dashboard/MyBookings'
@@ -83,6 +84,11 @@ function App() {
           <Route path="/create-listing" element={
             <ProtectedRoute requireEmailVerification>
               <CreateListing />
+            </ProtectedRoute>
+          } />
+          <Route path="/order/:id" element={
+            <ProtectedRoute requireEmailVerification>
+              <Order />
             </ProtectedRoute>
           } />
           <Route path="/messages" element={

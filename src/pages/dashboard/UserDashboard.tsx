@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   Package, 
@@ -16,37 +16,106 @@ import StatsCard from '@/components/dashboard/StatsCard'
 import RecentActivity from '@/components/dashboard/RecentActivity'
 import QuickActions from '@/components/dashboard/QuickActions'
 import EarningsChart from '@/components/dashboard/EarningsChart'
+import { useAuth } from '@/contexts/AuthContext'
+import { fetchUserListings } from '@/api/endpoints/listing'
+import { fetchMarketplaceOrdersForUser } from '@/api/endpoints/orders'
+import type { Listing } from '@/types'
+import type { MarketplaceOrder } from '@/types/order.types'
 
 const UserDashboard: React.FC = () => {
+  const { currentUser } = useAuth()
+  const [listings, setListings] = useState<Listing[]>([])
+  const [orders, setOrders] = useState<MarketplaceOrder[]>([])
+
+  useEffect(() => {
+    const run = async () => {
+      if (!currentUser) {
+        setListings([])
+        setOrders([])
+        return
+      }
+
+      try {
+        const [listingRows, orderRows] = await Promise.all([
+          fetchUserListings(currentUser.id),
+          fetchMarketplaceOrdersForUser(currentUser.id),
+        ])
+        setListings(listingRows)
+        setOrders(orderRows)
+      } catch {
+        setListings([])
+        setOrders([])
+      }
+    }
+
+    void run()
+  }, [currentUser])
+
+  const metrics = useMemo(() => {
+    if (!currentUser) {
+      return {
+        activeListings: 0,
+        activeRequests: 0,
+        monthlyEarnings: 0,
+        responseRate: 0,
+      }
+    }
+
+    const activeListings = listings.filter((listing) => listing.status === 'active').length
+    const incoming = orders.filter((order) => order.sellerId === currentUser.id)
+    const activeRequests = incoming.filter((order) => order.status === 'pending_seller_approval').length
+    const monthlyEarnings = incoming
+      .filter((order) => {
+        if (order.status !== 'approved') {
+          return false
+        }
+        const dt = new Date(order.updatedAt)
+        const now = new Date()
+        return dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear()
+      })
+      .reduce((sum, order) => sum + order.totalDue, 0)
+
+    const handled = incoming.filter((order) => order.status !== 'pending_seller_approval').length
+    const approved = incoming.filter((order) => order.status === 'approved').length
+    const responseRate = handled > 0 ? Math.round((approved / handled) * 100) : 0
+
+    return {
+      activeListings,
+      activeRequests,
+      monthlyEarnings,
+      responseRate,
+    }
+  }, [currentUser, listings, orders])
+
   const stats = [
     { 
       title: 'Active Listings', 
-      value: '12', 
-      change: '+2 this month', 
+      value: String(metrics.activeListings), 
+      change: 'Live from your listings', 
       icon: Package,  // ✅ Just the component, no JSX brackets
       color: 'blue' as const,
       link: '/my-listings'
     },
     { 
-      title: 'Active Rentals', 
-      value: '4', 
-      change: '3 ongoing, 1 upcoming', 
+      title: 'Pending Requests', 
+      value: String(metrics.activeRequests), 
+      change: 'Waiting for your decision', 
       icon: Calendar,  // ✅ Just the component
       color: 'green' as const,
       link: '/my-bookings'
     },
     { 
       title: 'Monthly Earnings', 
-      value: 'PKR 45,820', 
-      change: '+18% from last month', 
+      value: `PKR ${metrics.monthlyEarnings.toLocaleString()}`, 
+      change: 'Approved this month', 
       icon: DollarSign,  // ✅ Just the component
       color: 'purple' as const,
       link: '#'
     },
     { 
       title: 'Response Rate', 
-      value: '98%', 
-      change: 'Excellent', 
+      value: `${metrics.responseRate}%`, 
+      change: 'Approved vs handled requests', 
       icon: MessageSquare,  // ✅ Just the component
       color: 'orange' as const,
       link: '#'

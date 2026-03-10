@@ -18,6 +18,12 @@ import { useAuth } from '@/contexts/AuthContext'
 import CategoryDropdown from './CategoryDropdown'
 import LanguageSelector from './LanguageSelector'
 import ProfileDropdown from './ProfileDropdown'
+import { fetchUnreadChatCount, fetchUnreadNotificationCount } from '@/api/endpoints/chat'
+import {
+  fetchUserNotifications,
+  markAllNotificationsRead,
+  type AppNotification,
+} from '@/api/endpoints/notifications'
 
 const Header: React.FC = () => {
   const { currentUser, userData, logout, isEmailVerified } = useAuth()
@@ -26,10 +32,16 @@ const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isCategoryOpen, setIsCategoryOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
+  const [unreadChats, setUnreadChats] = useState(0)
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [isNotificationsLoading, setIsNotificationsLoading] = useState(false)
   
   const categoryContainerRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   const profileButtonRef = useRef<HTMLButtonElement>(null)
+  const notificationRef = useRef<HTMLDivElement>(null)
 
   const displayName =
     userData?.name?.trim() ||
@@ -57,6 +69,10 @@ const Header: React.FC = () => {
       ) {
         setIsProfileOpen(false)
       }
+
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false)
+      }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
@@ -64,6 +80,68 @@ const Header: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadCounts = async () => {
+      if (!currentUser) {
+        setUnreadChats(0)
+        setUnreadNotifications(0)
+        setNotifications([])
+        return
+      }
+
+      try {
+        const [chatCount, notificationCount] = await Promise.all([
+          fetchUnreadChatCount(currentUser.id),
+          fetchUnreadNotificationCount(currentUser.id),
+        ])
+        if (!cancelled) {
+          setUnreadChats(chatCount)
+          setUnreadNotifications(notificationCount)
+        }
+      } catch {
+        // Keep header resilient even if counters fail.
+      }
+    }
+
+    void loadCounts()
+
+    const intervalId = window.setInterval(() => {
+      void loadCounts()
+    }, 30000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [currentUser])
+
+  const openNotifications = async () => {
+    if (!currentUser) {
+      navigate('/login')
+      return
+    }
+
+    setIsNotificationsOpen(true)
+    setIsNotificationsLoading(true)
+
+    try {
+      const items = await fetchUserNotifications(currentUser.id, 10)
+      setNotifications(items)
+
+      if (unreadNotifications > 0) {
+        await markAllNotificationsRead(currentUser.id)
+        setUnreadNotifications(0)
+        setNotifications((prev) => prev.map((item) => ({ ...item, readAt: item.readAt || new Date().toISOString() })))
+      }
+    } catch {
+      setNotifications([])
+    } finally {
+      setIsNotificationsLoading(false)
+    }
+  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -215,16 +293,71 @@ const Header: React.FC = () => {
                 aria-label="Open messages"
               >
                 <MessageSquare size={22} />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary-600 rounded-full"></span>
+                {unreadChats > 0 ? (
+                  <span className="absolute -top-2 -right-2 min-w-5 rounded-full bg-primary-600 px-1 text-center text-xs text-white">
+                    {unreadChats > 9 ? '9+' : unreadChats}
+                  </span>
+                ) : null}
               </Link>
 
-              <button
-                className="hidden md:inline-flex items-center justify-center text-gray-700 hover:text-primary-600 relative"
-                aria-label="Open notifications"
-              >
-                <Bell size={22} />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              <div ref={notificationRef} className="relative hidden md:block">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isNotificationsOpen) {
+                      setIsNotificationsOpen(false)
+                      return
+                    }
+                    void openNotifications()
+                  }}
+                  className="inline-flex items-center justify-center text-gray-700 hover:text-primary-600 relative"
+                  aria-label="Open notifications"
+                >
+                  <Bell size={22} />
+                  {unreadNotifications > 0 ? (
+                    <span className="absolute -top-2 -right-2 min-w-5 rounded-full bg-red-500 px-1 text-center text-xs text-white">
+                      {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                    </span>
+                  ) : null}
+                </button>
+
+                {isNotificationsOpen && (
+                  <div className="absolute right-0 mt-3 w-96 rounded-xl border border-gray-200 bg-white p-3 shadow-xl">
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="font-semibold text-gray-900">Notifications</h3>
+                      <Link to="/my-bookings" className="text-xs text-primary-600 hover:text-primary-700">
+                        Open bookings
+                      </Link>
+                    </div>
+
+                    {isNotificationsLoading ? (
+                      <p className="py-5 text-center text-sm text-gray-500">Loading...</p>
+                    ) : notifications.length === 0 ? (
+                      <p className="py-5 text-center text-sm text-gray-500">No notifications yet.</p>
+                    ) : (
+                      <div className="max-h-80 space-y-2 overflow-y-auto">
+                        {notifications.map((item) => {
+                          const targetPath = item.type === 'message' ? '/messages' : '/my-bookings'
+                          return (
+                            <Link
+                              key={item.id}
+                              to={targetPath}
+                              onClick={() => setIsNotificationsOpen(false)}
+                              className="block rounded-lg border border-gray-100 p-3 hover:bg-gray-50"
+                            >
+                              <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                              <p className="mt-1 text-sm text-gray-600">{item.body}</p>
+                              <p className="mt-1 text-xs text-gray-400">
+                                {new Date(item.createdAt).toLocaleString()}
+                              </p>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               <button 
                 onClick={handleCreateListing}

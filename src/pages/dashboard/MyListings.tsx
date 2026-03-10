@@ -16,7 +16,7 @@ import {
   Search,
   BarChart3
 } from 'lucide-react'
-import { fetchUserListings } from '@/api/endpoints/listing'
+import { deleteUserListing, fetchUserListings } from '@/api/endpoints/listing'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Listing } from '@/types'
 
@@ -29,6 +29,7 @@ const MyListings: React.FC = () => {
   const [listings, setListings] = useState<Listing[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null)
 
   const statusOptions = [
     { value: 'all', label: 'All Status' },
@@ -102,6 +103,36 @@ const MyListings: React.FC = () => {
       setSelectedListings([])
     } else {
       setSelectedListings(filteredListings.map(l => l.id))
+    }
+  }
+
+  const handleDeleteListing = async (listingId: string, title: string) => {
+    if (!currentUser) {
+      return
+    }
+
+    const confirmed = window.confirm(`Delete listing "${title}"? This action cannot be undone.`)
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeletingId(listingId)
+    setLoadError(null)
+
+    try {
+      await deleteUserListing(listingId, currentUser.id)
+      setListings((prev) => prev.filter((listing) => listing.id !== listingId))
+      setSelectedListings((prev) => prev.filter((id) => id !== listingId))
+    } catch (error) {
+      const message =
+        error instanceof TypeError && /fetch/i.test(error.message)
+          ? 'Could not connect to Supabase. Please check your internet connection and try again.'
+          : error instanceof Error
+          ? error.message
+          : 'Failed to delete listing.'
+      setLoadError(message)
+    } finally {
+      setIsDeletingId(null)
     }
   }
 
@@ -396,6 +427,11 @@ const MyListings: React.FC = () => {
                             <Edit size={18} />
                           </Link>
                           <button 
+                            type="button"
+                            disabled={isDeletingId === listing.id}
+                            onClick={() => {
+                              void handleDeleteListing(listing.id, listing.title)
+                            }}
                             className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
                             title="Delete"
                           >

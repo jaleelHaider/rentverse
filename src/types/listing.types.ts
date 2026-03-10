@@ -26,6 +26,10 @@ export interface ListingAvailability {
   instantBooking: boolean;
   maxRenters: number;
   securityDeposit: number;
+  totalForRent: number;
+  availableForRent: number;
+  totalForSale: number;
+  availableForSale: number;
 }
 
 export interface CreateListingPayload {
@@ -41,6 +45,11 @@ export interface CreateListingPayload {
   features: string[];
   availability: ListingAvailability;
   images: File[];
+}
+
+export interface UpdateListingPayload extends Omit<CreateListingPayload, "images"> {
+  listingId: string;
+  images?: File[];
 }
 
 export interface ListingOwner {

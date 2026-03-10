@@ -52,6 +52,7 @@ export interface Listing {
   
   specifications: Record<string, string>;
   features: string[];
+  sellerTerms?: string[];
   
   seller: {
     id: string;
@@ -66,6 +67,10 @@ export interface Listing {
   availability: {
     forRent: boolean;
     forSale: boolean;
+    totalForRent: number;
+    availableForRent: number;
+    totalForSale: number;
+    availableForSale: number;
     rentalCalendar?: Record<string, boolean>;
   };
   

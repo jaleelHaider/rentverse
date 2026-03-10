@@ -73,6 +73,10 @@ create table public.listings (
   max_rental_days integer not null default 30,
   instant_booking boolean not null default true,
   max_renters integer not null default 1,
+  total_for_rent integer not null default 1 check (total_for_rent >= 0),
+  available_for_rent integer not null default 1 check (available_for_rent >= 0),
+  total_for_sale integer not null default 1 check (total_for_sale >= 0),
+  available_for_sale integer not null default 1 check (available_for_sale >= 0),
   specifications jsonb not null default '{}'::jsonb,
   features text[] not null default '{}',
   status text not null default 'active' check (status in ('draft', 'active', 'paused', 'archived', 'pending', 'sold', 'rented')),
@@ -115,6 +119,106 @@ create trigger listings_set_updated_at
 before update on public.listings
 for each row
 execute function public.set_updated_at();
+
+create or replace function public.reserve_listing_inventory(
+  p_listing_id uuid,
+  p_mode text,
+  p_quantity integer
+)
+returns table (remaining_quantity integer, updated_status text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_listing public.listings%rowtype;
+  v_next_remaining integer;
+  v_next_status text;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if p_quantity is null or p_quantity <= 0 then
+    raise exception 'Quantity must be greater than zero';
+  end if;
+
+  if p_mode not in ('rent', 'sell') then
+    raise exception 'Invalid mode';
+  end if;
+
+  select *
+  into v_listing
+  from public.listings
+  where id = p_listing_id
+  for update;
+
+  if not found then
+    raise exception 'Listing not found';
+  end if;
+
+  if v_listing.status <> 'active' then
+    raise exception 'This listing is not active';
+  end if;
+
+  if p_mode = 'sell' and v_listing.listing_type not in ('sell', 'both') then
+    raise exception 'This listing cannot be purchased';
+  end if;
+
+  if p_mode = 'rent' and v_listing.listing_type not in ('rent', 'both') then
+    raise exception 'This listing cannot be rented';
+  end if;
+
+  if p_mode = 'sell' then
+    if v_listing.available_for_sale < p_quantity then
+      raise exception 'Only % items available for sale', v_listing.available_for_sale;
+    end if;
+
+    v_next_remaining := v_listing.available_for_sale - p_quantity;
+    v_next_status := v_listing.status;
+
+    if v_listing.listing_type = 'sell' and v_next_remaining = 0 then
+      v_next_status := 'sold';
+    elsif v_listing.listing_type = 'both' and v_next_remaining = 0 and v_listing.available_for_rent = 0 then
+      v_next_status := 'sold';
+    end if;
+
+    update public.listings
+    set
+      available_for_sale = v_next_remaining,
+      status = v_next_status
+    where id = v_listing.id;
+
+    return query
+    select v_next_remaining, v_next_status;
+  end if;
+
+  if v_listing.available_for_rent < p_quantity then
+    raise exception 'Only % items available for rent', v_listing.available_for_rent;
+  end if;
+
+  v_next_remaining := v_listing.available_for_rent - p_quantity;
+  v_next_status := v_listing.status;
+
+  if v_listing.listing_type = 'rent' and v_next_remaining = 0 then
+    v_next_status := 'rented';
+  elsif v_listing.listing_type = 'both' and v_next_remaining = 0 and v_listing.available_for_sale = 0 then
+    v_next_status := 'rented';
+  end if;
+
+  update public.listings
+  set
+    available_for_rent = v_next_remaining,
+    status = v_next_status
+  where id = v_listing.id;
+
+  return query
+  select v_next_remaining, v_next_status;
+end;
+$$;
+
+revoke all on function public.reserve_listing_inventory(uuid, text, integer) from public;
+grant execute on function public.reserve_listing_inventory(uuid, text, integer) to authenticated;
 
 -- RLS
 alter table public.profiles enable row level security;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { 
   MapPin, 
   Shield, 
@@ -26,6 +26,7 @@ import { useChatNavigation } from '@/hooks/useChatNavigation'
 import { useAuth } from '@/contexts/AuthContext'
 
 const ListingDetail: React.FC = () => {
+  const navigate = useNavigate()
   const { currentUser } = useAuth()
   const { id } = useParams<{ id: string }>()
   const [selectedTab, setSelectedTab] = useState('details')
@@ -126,6 +127,12 @@ const ListingDetail: React.FC = () => {
     { id: 'reviews', label: 'Reviews (0)' },
     { id: 'shipping', label: 'Delivery & Returns' },
   ]
+
+  const rentAvailable = listing.availability.availableForRent
+  const saleAvailable = listing.availability.availableForSale
+  const hasStockForRent = listing.type !== 'buy' ? rentAvailable > 0 : true
+  const hasStockForSale = listing.type !== 'rent' ? saleAvailable > 0 : true
+  const isCurrentlyAvailable = hasStockForRent || hasStockForSale
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -236,9 +243,15 @@ const ListingDetail: React.FC = () => {
                   
                   <div className="text-right">
                     <div className="flex items-center gap-2 justify-end mb-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <span className="text-sm text-gray-600">Available Now</span>
+                      <div className={`w-3 h-3 rounded-full ${isCurrentlyAvailable ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <span className="text-sm text-gray-600">{isCurrentlyAvailable ? 'Available Now' : 'Out of Stock'}</span>
                     </div>
+                    {(listing.type === 'rent' || listing.type === 'both') && (
+                      <div className="text-sm text-gray-600">Rent available: {rentAvailable}</div>
+                    )}
+                    {(listing.type === 'buy' || listing.type === 'both') && (
+                      <div className="text-sm text-gray-600">Sale available: {saleAvailable}</div>
+                    )}
                     <div className="text-sm text-gray-500">Security Deposit</div>
                     <div className="text-lg font-semibold text-gray-900">
                       PKR {listing.price.securityDeposit?.toLocaleString()}
@@ -335,13 +348,23 @@ const ListingDetail: React.FC = () => {
               <h3 className="font-semibold text-lg">Ready to proceed?</h3>
               
               {listing.type === 'buy' || listing.type === 'both' ? (
-                <button className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition-shadow">
+                <button
+                  type="button"
+                  disabled={!hasStockForSale}
+                  onClick={() => navigate(`/order/${listing.id}?intent=buy`)}
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition-shadow disabled:cursor-not-allowed disabled:opacity-60"
+                >
                   Buy Now - PKR {listing.price.buy?.toLocaleString()}
                 </button>
               ) : null}
               
               {listing.type === 'rent' || listing.type === 'both' ? (
-                <button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition-shadow">
+                <button
+                  type="button"
+                  disabled={!hasStockForRent}
+                  onClick={() => navigate(`/order/${listing.id}?intent=rent`)}
+                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition-shadow disabled:cursor-not-allowed disabled:opacity-60"
+                >
                   Rent This Item
                 </button>
               ) : null}

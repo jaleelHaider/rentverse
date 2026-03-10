@@ -57,6 +57,10 @@ export const mockListings: Listing[] = [
     availability: {
       forRent: true,
       forSale: true,
+      totalForRent: 10,
+      availableForRent: 6,
+      totalForSale: 4,
+      availableForSale: 3,
       rentalCalendar: {
         '2024-01-15': true,
         '2024-01-16': true,

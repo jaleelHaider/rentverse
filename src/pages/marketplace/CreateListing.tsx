@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Camera,
   DollarSign,
@@ -17,7 +17,11 @@ import LocationPicker from "@/components/listing/LocationPicker";
 import ConditionSelector from "@/components/listing/ConditionSelector";
 import AIRecommendations from "@/components/listing/AIRecommendations";
 import { useAuth } from "@/contexts/AuthContext";
-import { createListingWithImages } from "@/api/endpoints/listing";
+import {
+  createListingWithImages,
+  fetchEditableListing,
+  updateUserListing,
+} from "@/api/endpoints/listing";
 import type { CreateListingPayload } from "@/types/listing.types";
 
 interface SpecRow {
@@ -32,15 +36,21 @@ const parsePositiveNumber = (value: string): number => {
 
 const CreateListing: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { currentUser, userData } = useAuth();
+  const editListingId = searchParams.get("edit") || "";
+  const isEditMode = editListingId.length > 0;
 
   const [step, setStep] = useState(1);
   const [listingType, setListingType] = useState<"buy" | "rent" | "both">("both");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isPublishTriggered, setIsPublishTriggered] = useState(false);
+  const [isEditLoading, setIsEditLoading] = useState(false);
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
 
   const [specRows, setSpecRows] = useState<SpecRow[]>([{ key: "", value: "" }]);
+  const [sellerConditionRows, setSellerConditionRows] = useState<string[]>([""]);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -74,6 +84,10 @@ const CreateListing: React.FC = () => {
       instantBooking: true,
       maxRenters: 1,
       securityDeposit: 0,
+      totalForRent: 1,
+      availableForRent: 1,
+      totalForSale: 1,
+      availableForSale: 1,
     },
   });
 
@@ -83,6 +97,57 @@ const CreateListing: React.FC = () => {
     { number: 3, title: "Set Price & Availability" },
     { number: 4, title: "Review & Publish" },
   ];
+
+  useEffect(() => {
+    const loadEditableListing = async () => {
+      if (!isEditMode || !currentUser) {
+        return;
+      }
+
+      setIsEditLoading(true);
+      setSubmitError(null);
+
+      try {
+        const editable = await fetchEditableListing(editListingId, currentUser.id);
+
+        setListingType(editable.listingType);
+        setFormData({
+          title: editable.title,
+          description: editable.description,
+          category: editable.category,
+          subCategory: editable.subCategory,
+          condition: editable.condition,
+          location: editable.location,
+          price: editable.price,
+          features: editable.features.length > 0 ? editable.features : [""],
+          images: [],
+          availability: {
+            ...editable.availability,
+            securityDeposit: parsePositiveNumber(editable.price.securityDeposit),
+          },
+        });
+
+        const specs = Object.entries(editable.specifications).map(([key, value]) => ({
+          key,
+          value,
+        }));
+
+        setSpecRows(specs.length > 0 ? specs : [{ key: "", value: "" }]);
+        setSellerConditionRows(
+          editable.sellerTerms.length > 0 ? editable.sellerTerms : [""]
+        );
+        setExistingImageUrls(editable.images);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load listing for editing.";
+        setSubmitError(message);
+      } finally {
+        setIsEditLoading(false);
+      }
+    };
+
+    void loadEditableListing();
+  }, [currentUser, editListingId, isEditMode]);
 
   const updateFeature = (index: number, value: string) => {
     setFormData((prev) => {
@@ -122,6 +187,25 @@ const CreateListing: React.FC = () => {
     });
   };
 
+  const updateSellerCondition = (index: number, value: string) => {
+    setSellerConditionRows((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const addSellerCondition = () => {
+    setSellerConditionRows((prev) => [...prev, ""]);
+  };
+
+  const removeSellerCondition = (index: number) => {
+    setSellerConditionRows((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length ? next : [""];
+    });
+  };
+
   const validateListing = (): string | null => {
     if (!currentUser) {
       return "You must be logged in to create a listing.";
@@ -141,7 +225,8 @@ const CreateListing: React.FC = () => {
     if (!formData.location.city.trim() || !formData.location.country.trim()) {
       return "Please provide complete location details (city and country).";
     }
-    if (!formData.images.length) {
+    const hasExistingImages = existingImageUrls.length > 0;
+    if (!formData.images.length && !(isEditMode && hasExistingImages)) {
       return "Please upload at least one image.";
     }
 
@@ -154,9 +239,16 @@ const CreateListing: React.FC = () => {
       return "Please set a valid selling price.";
     }
 
+    if ((listingType === "buy" || listingType === "both") && formData.availability.totalForSale <= 0) {
+      return "Please set total items available for sale.";
+    }
+
     if (listingType === "rent" || listingType === "both") {
       if (dailyRent <= 0 || weeklyRent <= 0 || monthlyRent <= 0) {
         return "Please enter daily, weekly, and monthly rental prices.";
+      }
+      if (formData.availability.totalForRent <= 0) {
+        return "Please set total items available for rent.";
       }
       if (formData.availability.maxRentalDays < formData.availability.minRentalDays) {
         return "Maximum rental days must be greater than or equal to minimum rental days.";
@@ -200,6 +292,14 @@ const CreateListing: React.FC = () => {
         return acc;
       }, {});
 
+      const sellerTerms = sellerConditionRows
+        .map((condition) => condition.trim())
+        .filter((condition) => condition.length > 0);
+
+      if (sellerTerms.length > 0) {
+        specifications.__seller_terms = sellerTerms.join("\n");
+      }
+
       const features = formData.features
         .map((feature) => feature.trim())
         .filter((feature) => feature.length > 0);
@@ -231,22 +331,40 @@ const CreateListing: React.FC = () => {
         availability: {
           ...formData.availability,
           securityDeposit,
+          availableForRent: formData.availability.totalForRent,
+          availableForSale: formData.availability.totalForSale,
         },
         images: formData.images,
       };
 
-      await createListingWithImages(payload, {
-        userId: currentUser.id,
-        email: currentUser.email || userData?.email || "",
-        name:
-          (currentUser.user_metadata?.full_name as string | undefined) ||
-          userData?.name ||
-          "Unknown user",
-      });
+      if (isEditMode) {
+        await updateUserListing(
+          {
+            listingId: editListingId,
+            ...payload,
+            images: payload.images.length > 0 ? payload.images : undefined,
+          },
+          currentUser.id
+        );
+      } else {
+        await createListingWithImages(payload, {
+          userId: currentUser.id,
+          email: currentUser.email || userData?.email || "",
+          name:
+            (currentUser.user_metadata?.full_name as string | undefined) ||
+            userData?.name ||
+            "Unknown user",
+        });
+      }
 
       navigate("/my-listings");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to publish listing.";
+      const message =
+        error instanceof TypeError && /fetch/i.test(error.message)
+          ? "Could not connect to Supabase. Please check your internet connection and try again."
+          : error instanceof Error
+          ? error.message
+          : "Failed to publish listing.";
       setSubmitError(message);
     } finally {
       setIsPublishTriggered(false);
@@ -257,6 +375,11 @@ const CreateListing: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container-custom max-w-6xl">
+        {isEditLoading ? (
+          <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 text-gray-600">
+            Loading listing details for edit...
+          </div>
+        ) : null}
         <div className="mb-8">
           <div className="mb-4 flex justify-between">
             {steps.map((s) => (
@@ -342,13 +465,21 @@ const CreateListing: React.FC = () => {
                 <div className="card p-8">
                   <div className="mb-6 flex items-center gap-3">
                     <Camera className="text-primary-600" size={24} />
-                    <h2 className="text-2xl font-bold">Add Photos & Details</h2>
+                    <h2 className="text-2xl font-bold">
+                      {isEditMode ? "Update Photos & Details" : "Add Photos & Details"}
+                    </h2>
                   </div>
 
                   <ImageUpload
                     maxImages={5}
                     onImagesChange={(images) => setFormData((prev) => ({ ...prev, images }))}
                   />
+
+                  {isEditMode && existingImageUrls.length > 0 ? (
+                    <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                      Current listing has {existingImageUrls.length} image(s). Upload new images only if you want to replace them.
+                    </div>
+                  ) : null}
 
                   <div className="mt-8">
                     <label className="mb-3 block text-lg font-semibold">Title</label>
@@ -413,7 +544,7 @@ const CreateListing: React.FC = () => {
 
                     <div className="space-y-3">
                       {specRows.map((row, index) => (
-                        <div key={`${index}-${row.key}`} className="grid grid-cols-12 gap-2">
+                        <div key={`spec-row-${index}`} className="grid grid-cols-12 gap-2">
                           <input
                             type="text"
                             value={row.key}
@@ -454,7 +585,7 @@ const CreateListing: React.FC = () => {
 
                     <div className="space-y-3">
                       {formData.features.map((feature, index) => (
-                        <div key={`${index}-${feature}`} className="grid grid-cols-12 gap-2">
+                        <div key={`feature-row-${index}`} className="grid grid-cols-12 gap-2">
                           <input
                             type="text"
                             value={feature}
@@ -473,6 +604,46 @@ const CreateListing: React.FC = () => {
                       ))}
                     </div>
                   </div>
+
+                  {(listingType === "rent" || listingType === "both") ? (
+                    <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+                    <div className="mb-4 flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-amber-900">Owner Conditions</h3>
+                      <button
+                        type="button"
+                        onClick={addSellerCondition}
+                        className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-amber-900 hover:bg-amber-100"
+                      >
+                        <Plus className="h-4 w-4" /> Add
+                      </button>
+                    </div>
+
+                    <p className="mb-3 text-sm text-amber-800">
+                      Add any mandatory terms renters must accept before checkout.
+                    </p>
+
+                    <div className="space-y-3">
+                      {sellerConditionRows.map((condition, index) => (
+                        <div key={`seller-condition-row-${index}`} className="grid grid-cols-12 gap-2">
+                          <input
+                            type="text"
+                            value={condition}
+                            onChange={(e) => updateSellerCondition(index, e.target.value)}
+                            placeholder="e.g., Original packaging required for returns"
+                            className="input-field col-span-11"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeSellerCondition(index)}
+                            className="col-span-1 inline-flex items-center justify-center rounded-lg border border-amber-300 bg-white hover:bg-amber-100"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
 
@@ -494,6 +665,27 @@ const CreateListing: React.FC = () => {
                           }))
                         }
                         placeholder="Enter selling price"
+                        className="input-field"
+                      />
+
+                      <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">
+                        Total Items Available for Sale
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.availability.totalForSale}
+                        onChange={(e) => {
+                          const total = Math.max(1, Number.parseInt(e.target.value || "1", 10));
+                          setFormData((prev) => ({
+                            ...prev,
+                            availability: {
+                              ...prev.availability,
+                              totalForSale: total,
+                              availableForSale: total,
+                            },
+                          }));
+                        }}
                         className="input-field"
                       />
                     </div>
@@ -579,6 +771,29 @@ const CreateListing: React.FC = () => {
                             }));
                           }}
                           placeholder="Optional"
+                          className="input-field"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                          Total Items Available for Rent
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={formData.availability.totalForRent}
+                          onChange={(e) => {
+                            const total = Math.max(1, Number.parseInt(e.target.value || "1", 10));
+                            setFormData((prev) => ({
+                              ...prev,
+                              availability: {
+                                ...prev.availability,
+                                totalForRent: total,
+                                availableForRent: total,
+                              },
+                            }));
+                          }}
                           className="input-field"
                         />
                       </div>
@@ -682,6 +897,12 @@ const CreateListing: React.FC = () => {
                             alt="Preview"
                             className="h-48 w-full rounded-lg object-cover"
                           />
+                        ) : existingImageUrls[0] ? (
+                          <img
+                            src={existingImageUrls[0]}
+                            alt="Current"
+                            className="h-48 w-full rounded-lg object-cover"
+                          />
                         ) : null}
                         <div>
                           <h4 className="text-xl font-bold">{formData.title}</h4>
@@ -727,6 +948,23 @@ const CreateListing: React.FC = () => {
                         </div>
                       </div>
                     </div>
+
+                    {(listingType === "rent" || listingType === "both") ? (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6">
+                        <h4 className="mb-2 font-semibold text-amber-900">Owner Conditions Preview</h4>
+                        <ul className="space-y-2 text-sm text-amber-800">
+                          {sellerConditionRows
+                            .map((condition) => condition.trim())
+                            .filter((condition) => condition.length > 0)
+                            .map((condition, index) => (
+                              <li key={`${condition}-${index}`}>• {condition}</li>
+                            ))}
+                          {sellerConditionRows.every((condition) => !condition.trim()) ? (
+                            <li>• No custom conditions added.</li>
+                          ) : null}
+                        </ul>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               )}
@@ -768,7 +1006,13 @@ const CreateListing: React.FC = () => {
                     disabled={isSubmitting}
                     className="btn-primary px-12 py-3 text-lg disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isSubmitting ? "Publishing..." : "Publish Listing"}
+                    {isSubmitting
+                      ? isEditMode
+                        ? "Saving..."
+                        : "Publishing..."
+                      : isEditMode
+                      ? "Save Changes"
+                      : "Publish Listing"}
                   </button>
                 )}
               </div>

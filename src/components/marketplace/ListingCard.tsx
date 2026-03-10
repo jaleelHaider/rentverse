@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Star, Heart, Calendar, Eye, Shield, CheckCircle, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatNavigation } from '@/hooks/useChatNavigation';
@@ -34,6 +34,12 @@ interface Listing {
     verified: boolean;
   };
   features?: string[];
+  availability?: {
+    totalForRent?: number;
+    availableForRent?: number;
+    totalForSale?: number;
+    availableForSale?: number;
+  };
 }
 
 interface ListingCardProps {
@@ -45,6 +51,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
   const [isSaved, setIsSaved] = React.useState(false);
   const { currentUser } = useAuth();
   const { openListingChat, isStartingChat } = useChatNavigation();
+  const navigate = useNavigate();
   const rating = listing.rating ?? 0;
   const totalReviews = listing.totalReviews ?? 0;
   const isOwnListing = currentUser?.id === listing.seller.id;
@@ -53,10 +60,42 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
   const isRentOnly = listing.type === 'rent';
   const isBuyOnly = listing.type === 'buy';
   const isBoth = listing.type === 'both';
+  const availableForRent = listing.availability?.availableForRent ?? 0;
+  const availableForSale = listing.availability?.availableForSale ?? 0;
+
+  const listingPath = `/listing/${listing.id}`;
+  const orderPath = `/order/${listing.id}?intent=${isBuyOnly ? 'buy' : 'rent'}`;
+
+  const primaryActionLabel = isRentOnly
+    ? 'Book Now'
+    : isBuyOnly
+    ? 'Buy Now'
+    : 'Rent/Buy';
+
+  const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('button, a')) {
+      return;
+    }
+    navigate(listingPath);
+  };
+
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      navigate(listingPath);
+    }
+  };
 
   if (viewMode === 'list') {
     return (
-      <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow group">
+      <div
+        className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow group cursor-pointer"
+        onClick={handleCardClick}
+        onKeyDown={handleCardKeyDown}
+        role="link"
+        tabIndex={0}
+      >
         <div className="flex flex-col md:flex-row gap-6">
           {/* Image */}
           <div className="md:w-64 lg:w-80">
@@ -216,14 +255,27 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
                         </div>
                       </div>
                     )}
+
+                    <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+                      {(isRentOnly || isBoth) && (
+                        <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700">
+                          Rent stock: {availableForRent}
+                        </span>
+                      )}
+                      {(isBuyOnly || isBoth) && (
+                        <span className="rounded-full bg-green-50 px-2 py-1 text-green-700">
+                          Sale stock: {availableForSale}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="flex gap-3">
                     <Link
-                      to={`/listing/${listing.id}`}
+                      to={orderPath}
                       className="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700"
                     >
-                      View Details
+                      {primaryActionLabel}
                     </Link>
                     <button
                       type="button"
@@ -250,7 +302,13 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
 
   // Grid View (default)
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl transition-shadow group">
+    <div
+      className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl transition-shadow group cursor-pointer"
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      role="link"
+      tabIndex={0}
+    >
       {/* Image Section */}
       <div className="relative aspect-video overflow-hidden">
         <img
@@ -381,13 +439,26 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, viewMode }) => {
           </div>
         </div>
 
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          {(isRentOnly || isBoth) && (
+            <span className="rounded-full bg-blue-50 px-2 py-1 font-medium text-blue-700">
+              Rent available: {availableForRent}
+            </span>
+          )}
+          {(isBuyOnly || isBoth) && (
+            <span className="rounded-full bg-green-50 px-2 py-1 font-medium text-green-700">
+              Sale available: {availableForSale}
+            </span>
+          )}
+        </div>
+
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-2 mt-4">
           <Link
-            to={`/listing/${listing.id}`}
+            to={orderPath}
             className="py-2 bg-primary-600 text-white rounded-lg text-center font-medium hover:bg-primary-700"
           >
-            View Details
+            {primaryActionLabel}
           </Link>
           <button
             type="button"
