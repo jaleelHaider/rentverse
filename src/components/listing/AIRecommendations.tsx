@@ -10,7 +10,7 @@ import {
   Zap,
   CheckCircle,
   Clock,
-  RefreshCw  // <-- Added this import
+  RefreshCw
 } from 'lucide-react';
 
 interface AIRecommendationsProps {
@@ -22,7 +22,7 @@ interface AIRecommendationsProps {
     price?: number;
     location?: string;
   };
-  onApplyRecommendation?: (type: string, value: any) => void;
+  onApplyRecommendation?: (type: string, value: unknown) => void;
 }
 
 interface Recommendation {
@@ -31,7 +31,7 @@ interface Recommendation {
   title: string;
   description: string;
   impact: 'high' | 'medium' | 'low';
-  value: any;
+  value: unknown;
   confidence: number; // 0-100
   estimatedImprovement?: string;
 }
@@ -139,7 +139,11 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
   };
 
   useEffect(() => {
-    analyzeListing();
+    const timer = setTimeout(() => {
+      void analyzeListing();
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [listingData]);
 
   return (
@@ -321,7 +325,7 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
               onClick={analyzeListing}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <RefreshCw className="h-4 w-4 mr-2" /> {/* Now this will work */}
+              <RefreshCw className="h-4 w-4 mr-2" />
               Re-analyze with Updates
             </button>
           </div>

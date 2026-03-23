@@ -45,6 +45,9 @@ const Register: React.FC = () => {
   
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  const getErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback;
   
   const cities = [
     'Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 
@@ -103,8 +106,8 @@ const Register: React.FC = () => {
       setRegistrationSuccess(true);
       
       // Don't navigate automatically - user needs to verify email first
-    } catch (error: any) {
-      setErrors({ submit: error.message || 'Registration failed. Please try again.' });
+    } catch (error: unknown) {
+      setErrors({ submit: getErrorMessage(error, 'Registration failed. Please try again.') });
     } finally {
       setIsLoading(false);
     }

@@ -19,7 +19,7 @@ import {
   Shield,
   AlertCircle
 } from 'lucide-react'
-import type { User } from '@supabase/supabase-js'
+import type { AuthUser } from '@/types/auth.types'
 
 interface UserData {
   uid: string;
@@ -33,7 +33,7 @@ interface UserData {
 }
 
 interface ProfileDropdownProps {
-  currentUser: User | null;
+  currentUser: AuthUser | null;
   userData: UserData | null;
   isEmailVerified: boolean;
   onClose: () => void;

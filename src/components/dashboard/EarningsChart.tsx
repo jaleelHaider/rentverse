@@ -35,7 +35,7 @@ const EarningsChart: React.FC<EarningsChartProps> = ({
   const totalEarnings = chartData.reduce((sum, d) => sum + d.earnings, 0);
   const totalBookings = chartData.reduce((sum, d) => sum + d.bookings, 0);
 
-  const timeframes = [
+  const timeframes: Array<{ id: 'week' | 'month' | 'year'; label: string }> = [
     { id: 'week', label: 'This Week' },
     { id: 'month', label: 'This Month' },
     { id: 'year', label: 'This Year' },
@@ -65,7 +65,7 @@ const EarningsChart: React.FC<EarningsChartProps> = ({
           {timeframes.map((tf) => (
             <button
               key={tf.id}
-              onClick={() => setSelectedTimeframe(tf.id as any)}
+              onClick={() => setSelectedTimeframe(tf.id)}
               className={`
                 px-4 py-2 text-sm rounded-lg transition-colors
                 ${selectedTimeframe === tf.id

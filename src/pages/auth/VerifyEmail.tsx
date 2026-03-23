@@ -25,9 +25,19 @@ const VerifyEmail: React.FC = () => {
   const [countdown, setCountdown] = useState(5);
   const navigate = useNavigate();
   const location = useLocation();
+  const locationState = location.state as
+    | { from?: string | { pathname?: string } }
+    | null;
   
   // Get the redirect path from location state or default to dashboard
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
+  const fromState = locationState?.from;
+  const from =
+    typeof fromState === 'string'
+      ? fromState
+      : fromState?.pathname || '/dashboard';
+
+  const getErrorMessage = (err: unknown, fallback: string) =>
+    err instanceof Error ? err.message : fallback;
 
   const handleResendVerification = async () => {
     try {
@@ -36,8 +46,8 @@ const VerifyEmail: React.FC = () => {
       await resendVerification();
       setIsSent(true);
       setTimeout(() => setIsSent(false), 3000);
-    } catch (err: any) {
-      setError(err.message || 'Failed to send verification email');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to send verification email'));
     } finally {
       setIsSending(false);
     }
@@ -70,7 +80,7 @@ const VerifyEmail: React.FC = () => {
       } else {
         setError('Email not verified yet. Please check your inbox and click the verification link.');
       }
-    } catch (err: any) {
+    } catch {
       setError('Failed to check verification status');
     } finally {
       setIsChecking(false);

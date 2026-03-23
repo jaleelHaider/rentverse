@@ -1,16 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import type { AuthUser } from '@/types/auth.types';
 import {
   getUserProfile,
   loginWithEmail,
   logoutUser,
+  readStoredAuthUser,
   refreshCurrentUser,
   registerWithEmail,
   resendVerificationEmail,
   resetPassword as resetPasswordEmail,
   upsertUserProfile,
-} from '../supabase/supabase';
+} from '@/api/endpoints/auth';
 
 interface UserData {
   uid: string;
@@ -24,7 +24,7 @@ interface UserData {
 }
 
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: AuthUser | null;
   userData: UserData | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -34,7 +34,7 @@ interface AuthContextType {
     phone: string;
     password: string;
     city: string;
-  }) => Promise<{ user: User; needsVerification: boolean }>;
+  }) => Promise<{ user: AuthUser; needsVerification: boolean }>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   resendVerification: () => Promise<void>;
@@ -47,6 +47,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -60,75 +61,93 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user ?? null;
-      setCurrentUser(user);
-      setIsEmailVerified(Boolean(user?.email_confirmed_at));
-
-      if (!user) {
-        setUserData(null);
-        setIsLoading(false);
-        return;
-      }
-
-      void (async () => {
-        try {
-          const profile = await getUserProfile(user.id);
-
-          if (profile) {
-            setUserData({
-              uid: profile.id,
-              name: profile.name,
-              email: profile.email,
-              phone: profile.phone,
-              city: profile.city,
-              profileCompleted: profile.profileCompleted,
-              createdAt: profile.createdAt,
-              lastLogin: profile.lastLogin,
-            });
-          } else {
-            const fallbackName = (user.user_metadata?.full_name as string | undefined) || '';
-            const now = new Date().toISOString();
-
-            await upsertUserProfile(user.id, {
-              name: fallbackName,
-              email: user.email || '',
-              profileCompleted: false,
-              lastLogin: now,
-            });
-
-            setUserData({
-              uid: user.id,
-              name: fallbackName,
-              email: user.email || '',
-              profileCompleted: false,
-              createdAt: now,
-              lastLogin: now,
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-        } finally {
-          setIsLoading(false);
+    const bootstrap = async () => {
+      try {
+        const cachedUser = readStoredAuthUser();
+        if (cachedUser) {
+          setCurrentUser(cachedUser);
+          setIsEmailVerified(Boolean(cachedUser.email_confirmed_at));
         }
-      })();
-    });
 
-    return () => {
-      subscription.unsubscribe();
+        const user = await refreshCurrentUser();
+        setCurrentUser(user);
+        setIsEmailVerified(Boolean(user?.email_confirmed_at));
+
+        if (!user) {
+          setUserData(null);
+          return;
+        }
+
+        const profile = await getUserProfile(user.id);
+
+        if (profile) {
+          setUserData({
+            uid: profile.id,
+            name: profile.name,
+            email: profile.email,
+            phone: profile.phone,
+            city: profile.city,
+            profileCompleted: profile.profileCompleted,
+            createdAt: profile.createdAt,
+            lastLogin: profile.lastLogin,
+          });
+          return;
+        }
+
+        const fallbackName = (user.user_metadata?.full_name as string | undefined) || '';
+        const now = new Date().toISOString();
+
+        await upsertUserProfile(user.id, {
+          name: fallbackName,
+          email: user.email || '',
+          profileCompleted: false,
+          lastLogin: now,
+        });
+
+        setUserData({
+          uid: user.id,
+          name: fallbackName,
+          email: user.email || '',
+          profileCompleted: false,
+          createdAt: now,
+          lastLogin: now,
+        });
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        setCurrentUser(null);
+        setUserData(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
+
+    void bootstrap();
   }, []);
 
   const login = async (email: string, password: string) => {
-    await loginWithEmail(email, password);
+    const user = await loginWithEmail(email, password);
+    setCurrentUser(user);
+    setIsEmailVerified(Boolean(user.email_confirmed_at));
+
+    const profile = await getUserProfile(user.id);
+    if (profile) {
+      setUserData({
+        uid: profile.id,
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone,
+        city: profile.city,
+        profileCompleted: profile.profileCompleted,
+        createdAt: profile.createdAt,
+        lastLogin: profile.lastLogin,
+      });
+    }
   };
 
   const register = async (userData: {
@@ -146,6 +165,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     await logoutUser();
+    setCurrentUser(null);
+    setUserData(null);
+    setIsEmailVerified(false);
   };
 
   const resetPassword = async (email: string) => {
@@ -173,16 +195,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const updateUserProfile = async (data: Partial<UserData>) => {
     if (!currentUser) throw new Error('No user logged in');
 
-    if (data.name) {
-      const { error } = await supabase.auth.updateUser({
-        data: { full_name: data.name },
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to update auth profile');
-      }
-    }
-
     await upsertUserProfile(currentUser.id, {
       name: data.name,
       email: data.email,
@@ -192,7 +204,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       lastLogin: data.lastLogin,
     });
     
-    // Update local state
+    if (data.name && currentUser) {
+      setCurrentUser({
+        ...currentUser,
+        user_metadata: {
+          ...currentUser.user_metadata,
+          full_name: data.name,
+        },
+      });
+    }
+
     setUserData(prev => prev ? { ...prev, ...data } : null);
   };
 

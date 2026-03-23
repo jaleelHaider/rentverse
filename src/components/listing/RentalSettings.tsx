@@ -20,7 +20,7 @@ const RentalSettings: React.FC<RentalSettingsProps> = ({ onSettingsChange }) => 
     securityDeposit: 0,
   });
 
-  const updateSetting = (key: keyof typeof settings, value: any) => {
+  const updateSetting = <K extends keyof typeof settings>(key: K, value: (typeof settings)[K]) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     if (onSettingsChange) {

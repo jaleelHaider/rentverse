@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BellRing, MessageCircleMore, MessagesSquare, Search, Users } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import ChatList from '@/components/chat/ChatList';
 import ChatWindow from '@/components/chat/ChatWindow';
@@ -13,6 +12,58 @@ import {
   sendConversationMessage,
 } from '@/api/endpoints/chat';
 import type { ChatConversationSummary, ChatMessageItem } from '@/types/chat.types';
+
+const ACTIVE_CHAT_POLL_MS = 4000;
+const IDLE_POLL_MS = 12000;
+const HIDDEN_TAB_POLL_MS = 30000;
+
+const areMessageListsEqual = (a: ChatMessageItem[], b: ChatMessageItem[]): boolean => {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  for (let index = 0; index < a.length; index += 1) {
+    const prev = a[index];
+    const next = b[index];
+
+    if (
+      prev.id !== next.id ||
+      prev.content !== next.content ||
+      prev.readAt !== next.readAt ||
+      prev.createdAt !== next.createdAt
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+const areConversationListsEqual = (
+  a: ChatConversationSummary[],
+  b: ChatConversationSummary[]
+): boolean => {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  for (let index = 0; index < a.length; index += 1) {
+    const prev = a[index];
+    const next = b[index];
+
+    if (
+      prev.id !== next.id ||
+      prev.lastMessageAt !== next.lastMessageAt ||
+      prev.lastMessage !== next.lastMessage ||
+      prev.unreadCount !== next.unreadCount ||
+      prev.counterpartOnline !== next.counterpartOnline
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+};
 
 const Inbox: React.FC = () => {
   const { currentUser } = useAuth();
@@ -30,6 +81,9 @@ const Inbox: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [listFilter, setListFilter] = useState<'all' | 'unread' | 'online'>('all');
   const [pageError, setPageError] = useState<string | null>(null);
+  const messageCacheRef = React.useRef<Record<string, ChatMessageItem[]>>({});
+  const isConversationsRequestInFlightRef = React.useRef(false);
+  const inFlightMessageConversationRef = React.useRef<string | null>(null);
 
   const clearListingContextParams = useCallback(() => {
     if (!searchParams.has('listingContext') && !searchParams.has('listing') && !searchParams.has('seller')) {
@@ -43,15 +97,26 @@ const Inbox: React.FC = () => {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(async (options?: { silent?: boolean }) => {
     if (!currentUser) return;
 
-    setIsLoadingConversations(true);
-    setPageError(null);
+    if (isConversationsRequestInFlightRef.current) {
+      return;
+    }
+
+    isConversationsRequestInFlightRef.current = true;
+    const silent = options?.silent ?? false;
+
+    if (!silent) {
+      setIsLoadingConversations(true);
+      setPageError(null);
+    }
 
     try {
       const nextConversations = await fetchUserConversations(currentUser.id);
-      setConversations(nextConversations);
+      setConversations((prev) =>
+        areConversationListsEqual(prev, nextConversations) ? prev : nextConversations
+      );
 
       const chatFromQuery = searchParams.get('chat');
       if (chatFromQuery && nextConversations.some((conversation) => conversation.id === chatFromQuery)) {
@@ -69,29 +134,73 @@ const Inbox: React.FC = () => {
       const message = error instanceof Error ? error.message : 'Failed to load inbox.';
       setPageError(message);
     } finally {
-      setIsLoadingConversations(false);
+      if (!silent) {
+        setIsLoadingConversations(false);
+      }
+      isConversationsRequestInFlightRef.current = false;
     }
   }, [currentUser, searchParams]);
 
   const loadMessagesForConversation = useCallback(
-    async (conversationId: string) => {
+    async (
+      conversationId: string,
+      options?: { silent?: boolean; markAsRead?: boolean }
+    ) => {
       if (!currentUser) return;
 
-      setIsLoadingMessages(true);
-      setPageError(null);
+      const silent = options?.silent ?? false;
+      const markAsRead = options?.markAsRead ?? true;
+
+      if (inFlightMessageConversationRef.current === conversationId) {
+        return;
+      }
+
+      inFlightMessageConversationRef.current = conversationId;
+
+      if (!silent && !messageCacheRef.current[conversationId]?.length) {
+        setIsLoadingMessages(true);
+        setPageError(null);
+      }
 
       try {
         const nextMessages = await fetchConversationMessages(conversationId);
-        setMessages(nextMessages);
-        await markConversationMessagesAsRead(conversationId, currentUser.id);
+        const cachedMessages = messageCacheRef.current[conversationId] || [];
+        const hasChanged = !areMessageListsEqual(cachedMessages, nextMessages);
+
+        if (hasChanged) {
+          messageCacheRef.current[conversationId] = nextMessages;
+        }
+
+        setMessages((prev) => {
+          if (activeConversationId !== conversationId) {
+            return prev;
+          }
+
+          if (!hasChanged || areMessageListsEqual(prev, nextMessages)) {
+            return prev;
+          }
+
+          return nextMessages;
+        });
+
+        if (markAsRead) {
+          await markConversationMessagesAsRead(conversationId, currentUser.id);
+        }
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to load messages.';
-        setPageError(message);
+        if (!silent) {
+          const message = error instanceof Error ? error.message : 'Failed to load messages.';
+          setPageError(message);
+        }
       } finally {
-        setIsLoadingMessages(false);
+        if (!silent) {
+          setIsLoadingMessages(false);
+        }
+        if (inFlightMessageConversationRef.current === conversationId) {
+          inFlightMessageConversationRef.current = null;
+        }
       }
     },
-    [currentUser]
+    [activeConversationId, currentUser]
   );
 
   useEffect(() => {
@@ -157,57 +266,56 @@ const Inbox: React.FC = () => {
       setSearchParams(nextParams, { replace: true });
     }
 
-    void loadMessagesForConversation(activeConversationId);
+    const cachedMessages = messageCacheRef.current[activeConversationId] || [];
+    if (cachedMessages.length > 0) {
+      setMessages(cachedMessages);
+    }
+
+    void loadMessagesForConversation(activeConversationId, {
+      silent: cachedMessages.length > 0,
+      markAsRead: true,
+    });
   }, [activeConversationId, loadMessagesForConversation, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!currentUser) return;
 
-    const inboxChannel = supabase
-      .channel(`inbox-user-${currentUser.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${currentUser.id}`,
-        },
-        () => {
-          void loadConversations();
-        }
-      )
-      .subscribe();
+    const getPollInterval = () => {
+      if (document.visibilityState === 'hidden') {
+        return HIDDEN_TAB_POLL_MS;
+      }
+
+      return activeConversationId ? ACTIVE_CHAT_POLL_MS : IDLE_POLL_MS;
+    };
+
+    let timeoutId: number | null = null;
+    let stopped = false;
+
+    const runTick = () => {
+      if (stopped) {
+        return;
+      }
+
+      void loadConversations({ silent: true });
+      if (activeConversationId) {
+        void loadMessagesForConversation(activeConversationId, {
+          silent: true,
+          markAsRead: true,
+        });
+      }
+
+      timeoutId = window.setTimeout(runTick, getPollInterval());
+    };
+
+    timeoutId = window.setTimeout(runTick, getPollInterval());
 
     return () => {
-      void supabase.removeChannel(inboxChannel);
+      stopped = true;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     };
-  }, [currentUser, loadConversations]);
-
-  useEffect(() => {
-    if (!activeConversationId) return;
-
-    const activeConversationChannel = supabase
-      .channel(`conversation-${activeConversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${activeConversationId}`,
-        },
-        () => {
-          void loadMessagesForConversation(activeConversationId);
-          void loadConversations();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(activeConversationChannel);
-    };
-  }, [activeConversationId, loadConversations, loadMessagesForConversation]);
+  }, [activeConversationId, currentUser, loadConversations, loadMessagesForConversation]);
 
   const activeConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === activeConversationId) || null,
@@ -265,40 +373,24 @@ const Inbox: React.FC = () => {
 
     try {
       const listingContextId = searchParams.get('listingContext') || undefined;
-      const attachmentLines: string[] = [];
-
-      if (pendingFiles.length > 0) {
-        for (const file of pendingFiles) {
-          const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          const storagePath = `${currentUser.id}/${activeConversationId}/${Date.now()}-${cleanName}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from('chat-attachments')
-            .upload(storagePath, file, { upsert: false, contentType: file.type || undefined });
-
-          if (uploadError) {
-            throw new Error(uploadError.message || `Failed to upload ${file.name}`);
-          }
-
-          const publicUrl = supabase.storage.from('chat-attachments').getPublicUrl(storagePath).data.publicUrl;
-          attachmentLines.push(`Attachment: ${file.name} (${publicUrl})`);
-        }
-      }
-
-      const composedMessage = [nextMessage, ...attachmentLines].filter(Boolean).join('\n\n');
 
       const inserted = await sendConversationMessage({
         conversationId: activeConversationId,
         senderId: currentUser.id,
-        content: composedMessage,
+        content: nextMessage,
         listingContextId,
+        files: pendingFiles,
       });
 
-      setMessages((prev) => [...prev, inserted]);
+      setMessages((prev) => {
+        const next = [...prev, inserted];
+        messageCacheRef.current[activeConversationId] = next;
+        return next;
+      });
       setDraftMessage('');
       setPendingFiles([]);
       clearListingContextParams();
-      await loadConversations();
+      await loadConversations({ silent: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to send message.';
       setPageError(message);
@@ -475,32 +567,32 @@ const Inbox: React.FC = () => {
           </aside>
 
           <section
-            className="rounded-3xl border border-gray-200/70 bg-white/80 backdrop-blur-sm shadow-xl h-full min-h-0 overflow-hidden"
+            className="relative rounded-3xl border border-gray-200/70 bg-white/80 backdrop-blur-sm shadow-xl h-full min-h-0 overflow-hidden"
             onMouseDownCapture={handlePanelInteraction}
             onFocusCapture={handlePanelInteraction}
           >
-            {isLoadingMessages && activeConversation ? (
-              <div className="h-full flex items-center justify-center">
+            <ChatWindow
+              conversation={activeConversation}
+              currentUserId={currentUser.id}
+              messages={messages}
+              draftMessage={draftMessage}
+              isSending={isSending}
+              pendingFiles={pendingFiles}
+              onDraftChange={setDraftMessage}
+              onPickFiles={handlePickFiles}
+              onRemoveFile={handleRemoveFile}
+              onAddEmoji={handleAddEmoji}
+              onSendMessage={handleSendMessage}
+            />
+
+            {isLoadingMessages && activeConversation && messages.length === 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm pointer-events-none">
                 <div className="flex flex-col items-center gap-3 text-gray-400">
                   <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
                   <span className="text-sm font-medium">Loading chat...</span>
                 </div>
               </div>
-            ) : (
-              <ChatWindow
-                conversation={activeConversation}
-                currentUserId={currentUser.id}
-                messages={messages}
-                draftMessage={draftMessage}
-                isSending={isSending}
-                pendingFiles={pendingFiles}
-                onDraftChange={setDraftMessage}
-                onPickFiles={handlePickFiles}
-                onRemoveFile={handleRemoveFile}
-                onAddEmoji={handleAddEmoji}
-                onSendMessage={handleSendMessage}
-              />
-            )}
+            ) : null}
           </section>
         </div>
       </div>

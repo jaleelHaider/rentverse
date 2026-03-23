@@ -20,8 +20,12 @@ const ForgotPassword: React.FC = () => {
     try {
       await resetPassword(email);
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to send reset email');
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Failed to send reset email';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

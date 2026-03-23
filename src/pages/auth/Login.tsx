@@ -24,6 +24,9 @@ const Login: React.FC = () => {
       ? fromState
       : fromState?.pathname || '/'
 
+  const getErrorMessage = (err: unknown, fallback: string) =>
+    err instanceof Error ? err.message : fallback
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -32,11 +35,12 @@ const Login: React.FC = () => {
     try {
       await login(email, password)
       navigate(redirectTo, { replace: true })
-    } catch (err: any) {
-      if (err.message === 'EMAIL_NOT_VERIFIED' || err.message.includes('verify your email')) {
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Invalid email or password')
+      if (message === 'EMAIL_NOT_VERIFIED' || message.includes('verify your email')) {
         setError('EMAIL_NOT_VERIFIED')
       } else {
-        setError(err.message || 'Invalid email or password')
+        setError(message)
       }
     } finally {
       setIsLoading(false)
@@ -51,8 +55,8 @@ const Login: React.FC = () => {
       setTimeout(() => {
         setError('')
       }, 3000)
-    } catch (err: any) {
-      setError(err.message || 'Failed to resend verification email')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to resend verification email'))
     } finally {
       setIsResending(false)
     }

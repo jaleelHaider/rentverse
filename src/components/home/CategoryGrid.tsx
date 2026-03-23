@@ -25,6 +25,105 @@ interface Category {
   aliases?: string[];
 }
 
+const categories: Category[] = [
+  {
+    id: 'electronics',
+    name: 'Electronics',
+    icon: <Smartphone className="h-8 w-8" />,
+    description: 'Phones, laptops, cameras, gadgets',
+    color: 'bg-blue-100 text-blue-600',
+    aliases: ['electronics'],
+  },
+  {
+    id: 'vehicles',
+    name: 'Vehicles',
+    icon: <Car className="h-8 w-8" />,
+    description: 'Cars, bikes, scooters',
+    color: 'bg-green-100 text-green-600',
+    aliases: ['vehicles'],
+  },
+  {
+    id: 'home',
+    name: 'Home & Garden',
+    icon: <Home className="h-8 w-8" />,
+    description: 'Furniture, appliances, decor',
+    color: 'bg-orange-100 text-orange-600',
+    aliases: ['home'],
+  },
+  {
+    id: 'entertainment',
+    name: 'Entertainment',
+    icon: <Tv className="h-8 w-8" />,
+    description: 'TVs, projectors, gaming',
+    color: 'bg-purple-100 text-purple-600',
+    aliases: ['entertainment'],
+  },
+  {
+    id: 'music',
+    name: 'Music & Instruments',
+    icon: <Music className="h-8 w-8" />,
+    description: 'Guitars, keyboards, DJ gear',
+    color: 'bg-pink-100 text-pink-600',
+    aliases: ['music'],
+  },
+  {
+    id: 'sports',
+    name: 'Sports & Fitness',
+    icon: <Dumbbell className="h-8 w-8" />,
+    description: 'Gym equipment, camping gear',
+    color: 'bg-red-100 text-red-600',
+    aliases: ['sports'],
+  },
+  {
+    id: 'events',
+    name: 'Party & Events',
+    icon: <PartyPopper className="h-8 w-8" />,
+    description: 'Decorations, sound systems',
+    color: 'bg-yellow-100 text-yellow-600',
+    aliases: ['events', 'party'],
+  },
+  {
+    id: 'tools',
+    name: 'Tools & Equipment',
+    icon: <Briefcase className="h-8 w-8" />,
+    description: 'Power tools, garden equipment',
+    color: 'bg-teal-100 text-teal-600',
+    aliases: ['tools'],
+  },
+  {
+    id: 'creative',
+    name: 'Creative Arts',
+    icon: <Palette className="h-8 w-8" />,
+    description: 'Art supplies, cameras, lighting',
+    color: 'bg-indigo-100 text-indigo-600',
+    aliases: ['creative'],
+  },
+  {
+    id: 'gaming',
+    name: 'Gaming',
+    icon: <Gamepad2 className="h-8 w-8" />,
+    description: 'Consoles, VR, accessories',
+    color: 'bg-cyan-100 text-cyan-600',
+    aliases: ['gaming'],
+  },
+  {
+    id: 'kitchen',
+    name: 'Kitchen & Dining',
+    icon: <Coffee className="h-8 w-8" />,
+    description: 'Appliances, dinnerware',
+    color: 'bg-amber-100 text-amber-600',
+    aliases: ['kitchen'],
+  },
+  {
+    id: 'photography',
+    name: 'Photography',
+    icon: <Camera className="h-8 w-8" />,
+    description: 'Cameras, lenses, drones',
+    color: 'bg-violet-100 text-violet-600',
+    aliases: ['photography'],
+  },
+];
+
 const CategoryGrid: React.FC = () => {
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const [isLoadingCounts, setIsLoadingCounts] = useState(true);
@@ -44,105 +143,6 @@ const CategoryGrid: React.FC = () => {
     void loadCategoryCounts();
   }, []);
 
-  const categories: Category[] = [
-    {
-      id: 'electronics',
-      name: 'Electronics',
-      icon: <Smartphone className="h-8 w-8" />,
-      description: 'Phones, laptops, cameras, gadgets',
-      color: 'bg-blue-100 text-blue-600',
-      aliases: ['electronics'],
-    },
-    {
-      id: 'vehicles',
-      name: 'Vehicles',
-      icon: <Car className="h-8 w-8" />,
-      description: 'Cars, bikes, scooters',
-      color: 'bg-green-100 text-green-600',
-      aliases: ['vehicles'],
-    },
-    {
-      id: 'home',
-      name: 'Home & Garden',
-      icon: <Home className="h-8 w-8" />,
-      description: 'Furniture, appliances, decor',
-      color: 'bg-orange-100 text-orange-600',
-      aliases: ['home'],
-    },
-    {
-      id: 'entertainment',
-      name: 'Entertainment',
-      icon: <Tv className="h-8 w-8" />,
-      description: 'TVs, projectors, gaming',
-      color: 'bg-purple-100 text-purple-600',
-      aliases: ['entertainment'],
-    },
-    {
-      id: 'music',
-      name: 'Music & Instruments',
-      icon: <Music className="h-8 w-8" />,
-      description: 'Guitars, keyboards, DJ gear',
-      color: 'bg-pink-100 text-pink-600',
-      aliases: ['music'],
-    },
-    {
-      id: 'sports',
-      name: 'Sports & Fitness',
-      icon: <Dumbbell className="h-8 w-8" />,
-      description: 'Gym equipment, camping gear',
-      color: 'bg-red-100 text-red-600',
-      aliases: ['sports'],
-    },
-    {
-      id: 'events',
-      name: 'Party & Events',
-      icon: <PartyPopper className="h-8 w-8" />,
-      description: 'Decorations, sound systems',
-      color: 'bg-yellow-100 text-yellow-600',
-      aliases: ['events', 'party'],
-    },
-    {
-      id: 'tools',
-      name: 'Tools & Equipment',
-      icon: <Briefcase className="h-8 w-8" />,
-      description: 'Power tools, garden equipment',
-      color: 'bg-teal-100 text-teal-600',
-      aliases: ['tools'],
-    },
-    {
-      id: 'creative',
-      name: 'Creative Arts',
-      icon: <Palette className="h-8 w-8" />,
-      description: 'Art supplies, cameras, lighting',
-      color: 'bg-indigo-100 text-indigo-600',
-      aliases: ['creative'],
-    },
-    {
-      id: 'gaming',
-      name: 'Gaming',
-      icon: <Gamepad2 className="h-8 w-8" />,
-      description: 'Consoles, VR, accessories',
-      color: 'bg-cyan-100 text-cyan-600',
-      aliases: ['gaming'],
-    },
-    {
-      id: 'kitchen',
-      name: 'Kitchen & Dining',
-      icon: <Coffee className="h-8 w-8" />,
-      description: 'Appliances, dinnerware',
-      color: 'bg-amber-100 text-amber-600',
-      aliases: ['kitchen'],
-    },
-    {
-      id: 'photography',
-      name: 'Photography',
-      icon: <Camera className="h-8 w-8" />,
-      description: 'Cameras, lenses, drones',
-      color: 'bg-violet-100 text-violet-600',
-      aliases: ['photography'],
-    },
-  ];
-
   const categoriesWithCounts = useMemo(
     () =>
       categories.map((category) => {
@@ -154,7 +154,7 @@ const CategoryGrid: React.FC = () => {
           itemCount,
         };
       }),
-    [categories, categoryCounts]
+    [categoryCounts]
   );
 
   return (

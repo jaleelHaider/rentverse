@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Calculator, Tag, Clock } from 'lucide-react';
 
 interface RentalPrice {
@@ -22,13 +22,11 @@ const RentalCalculator: React.FC<RentalCalculatorProps> = ({ listing }) => {
   const [durationType, setDurationType] = useState<'days' | 'weeks' | 'months'>('days');
   const [includeDeposit, setIncludeDeposit] = useState(true);
   const [discount, setDiscount] = useState(0);
-  const [calculatedPrice, setCalculatedPrice] = useState(0);
 
-  useEffect(() => {
-    calculatePrice();
-  }, [duration, durationType, includeDeposit, discount]);
+  const isDurationType = (value: string): value is 'days' | 'weeks' | 'months' =>
+    value === 'days' || value === 'weeks' || value === 'months';
 
-  const calculatePrice = () => {
+  const calculatedPrice = useMemo(() => {
     let basePrice = 0;
     
     switch (durationType) {
@@ -48,9 +46,8 @@ const RentalCalculator: React.FC<RentalCalculatorProps> = ({ listing }) => {
     
     // Add security deposit if included
     const total = discountedPrice + (includeDeposit ? listing.price.securityDeposit : 0);
-    
-    setCalculatedPrice(total);
-  };
+    return total;
+  }, [discount, duration, durationType, includeDeposit, listing.price.rent.daily, listing.price.rent.monthly, listing.price.rent.weekly, listing.price.securityDeposit]);
 
   const getBasePrice = () => {
     switch (durationType) {
@@ -103,7 +100,12 @@ const RentalCalculator: React.FC<RentalCalculatorProps> = ({ listing }) => {
             <div className="flex-1">
               <select
                 value={durationType}
-                onChange={(e) => setDurationType(e.target.value as any)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (isDurationType(value)) {
+                    setDurationType(value);
+                  }
+                }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="days">Days</option>

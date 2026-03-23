@@ -126,7 +126,7 @@ const MyListings: React.FC = () => {
     } catch (error) {
       const message =
         error instanceof TypeError && /fetch/i.test(error.message)
-          ? 'Could not connect to Supabase. Please check your internet connection and try again.'
+          ? 'Could not connect to the server. Please check your internet connection and try again.'
           : error instanceof Error
           ? error.message
           : 'Failed to delete listing.'
