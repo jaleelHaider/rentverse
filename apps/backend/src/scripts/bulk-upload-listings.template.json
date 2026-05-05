@@ -1,0 +1,46 @@
+[
+  {
+    "title": "Canon EOS 250D DSLR Camera",
+    "description": "Lightweight DSLR camera with 18-55mm lens, ideal for events and travel.",
+    "category": "Electronics",
+    "subCategory": "Camera",
+    "condition": "Good",
+    "listingType": "rent",
+    "status": "active",
+    "price": {
+      "buy": "",
+      "rent": {
+        "daily": "3500",
+        "weekly": "20000",
+        "monthly": "65000"
+      },
+      "securityDeposit": "15000"
+    },
+    "location": {
+      "address": "Main Blvd",
+      "city": "Lahore",
+      "state": "Punjab",
+      "country": "Pakistan",
+      "lat": 31.5204,
+      "lng": 74.3587,
+      "radius": 8
+    },
+    "availability": {
+      "minRentalDays": 1,
+      "maxRentalDays": 20,
+      "instantBooking": true,
+      "maxRenters": 1,
+      "totalForRent": 1,
+      "availableForRent": 1,
+      "totalForSale": 0,
+      "availableForSale": 0
+    },
+    "specifications": {
+      "brand": "Canon",
+      "model": "EOS 250D",
+      "sensor": "APS-C"
+    },
+    "features": ["wifi", "flip-screen", "4k-video"],
+    "images": ["canon-250d-front.jpg", "canon-250d-side.jpg"]
+  }
+]

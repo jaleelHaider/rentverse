@@ -219,6 +219,37 @@ using (
     where l.id = listing_id and l.owner_user_id = auth.uid()
   )
 );
+
+create table if not exists public.saved_listings (
+  id uuid primary key default gen_random_uuid(),
+  saved_by_user_id uuid not null references auth.users(id) on delete cascade,
+  listing_id uuid not null references public.listings(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (saved_by_user_id, listing_id)
+);
+
+create index if not exists saved_listings_saved_by_user_id_idx
+  on public.saved_listings(saved_by_user_id, created_at desc);
+
+create index if not exists saved_listings_listing_id_idx
+  on public.saved_listings(listing_id);
+
+alter table public.saved_listings enable row level security;
+
+create policy "saved_listings_select_own"
+on public.saved_listings
+for select
+using (auth.uid() = saved_by_user_id);
+
+create policy "saved_listings_insert_own"
+on public.saved_listings
+for insert
+with check (auth.uid() = saved_by_user_id);
+
+create policy "saved_listings_delete_own"
+on public.saved_listings
+for delete
+using (auth.uid() = saved_by_user_id);
 ```
 
 Storage policies:

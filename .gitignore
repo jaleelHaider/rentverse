@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# AI Service (skip completely)
+apps/backend/ai-service/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

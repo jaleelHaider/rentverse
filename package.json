@@ -1,40 +1,29 @@
 {
   "name": "rentverse",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "RentVerse - Monorepo for marketplace platform",
   "type": "module",
+  "workspaces": [
+    "apps/web",
+    "apps/mobile",
+    "apps/backend",
+    "packages/shared"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@tanstack/react-query": "^5.90.11",
-    "@tanstack/react-query-devtools": "^5.91.1",
-    "axios": "^1.13.2",
-    "date-fns": "^4.1.0",
-    "lucide-react": "^0.555.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-dropzone": "^14.3.8",
-    "react-router-dom": "^7.10.0"
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:mobile": "npm run dev --workspace=apps/mobile",
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "build:web": "npm run build --workspace=apps/web",
+    "build:mobile": "npm run build --workspace=apps/mobile",
+    "build:backend": "npm run build --workspace=apps/backend",
+    "lint:web": "npm run lint --workspace=apps/web",
+    "lint": "npm run lint:web"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "autoprefixer": "^10.4.0",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "postcss": "^8.4.0",
-    "tailwindcss": "^3.3.0",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "ajv": "^8.17.1"
+  },
+  "dependencies": {
+    "fetch-nodeshim": "^0.4.10"
   }
 }

@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles for React Native */
+@layer base {
+  @apply text-gray-900;
+}
+
+/* Utility classes for common patterns */
+@layer components {
+  .safe-area {
+    @apply pt-4 pb-4;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-md p-4;
+  }
+
+  .btn-primary {
+    @apply bg-indigo-600 text-white rounded-lg px-4 py-2 font-semibold;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-900 rounded-lg px-4 py-2 font-semibold;
+  }
+}

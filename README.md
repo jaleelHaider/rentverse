@@ -1,257 +1,181 @@
-# RentVerse
+# RentVerse - Monorepo
 
-RentVerse is a technology-driven marketplace for Pakistan where users can buy, sell, and rent items with a structured rental flow, escrow-style payment handling, and AI-assisted safety and quality features.
+A modern, scalable marketplace platform for buying, selling, and renting items in Pakistan. Built with **React** (web), **React Native + Expo** (mobile), **Node.js + Express** (backend), and **Python FastAPI** (AI services).
 
-Unlike traditional local marketplaces focused only on buying/selling, RentVerse introduces an end-to-end rental lifecycle with deposits, verification, and dispute support.
+This is a **monorepo** using npm/pnpm workspaces, with shared types across all platforms for maximum data consistency.
 
-## Table of Contents
+## 🚀 Quick Start
 
-1. [Project Vision](#project-vision)
-2. [Problem Statement](#problem-statement)
-3. [Objectives](#objectives)
-4. [Core Features](#core-features)
-5. [Requirement Coverage](#requirement-coverage)
-6. [AI Components](#ai-components)
-7. [System Flow](#system-flow)
-8. [Security Measures](#security-measures)
-9. [Tech Stack](#tech-stack)
-10. [Project Architecture](#project-architecture)
-11. [Getting Started](#getting-started)
-12. [Environment Variables](#environment-variables)
-13. [Database and Supabase Setup](#database-and-supabase-setup)
-14. [Available Scripts](#available-scripts)
-15. [Deployment and CI/CD](#deployment-and-cicd)
-16. [Current Scope and Roadmap](#current-scope-and-roadmap)
-17. [Contributing](#contributing)
-18. [License](#license)
+```bash
+cd rentverse
+npm install
+npm run dev:web      # Web: http://localhost:3000
+npm run dev:mobile   # Mobile: Expo
+npm run dev:backend  # Backend: http://localhost:4000
+```
 
-## Project Vision
+## Project Structure
 
-RentVerse aims to be a complete ecosystem for local commerce and temporary access to goods.
+```
+rentverse/
+├── apps/
+│   ├── web/                 # Vite + React + TypeScript web app
+│   ├── mobile/              # Expo + React Native + TypeScript mobile app
+│   └── backend/             # Express.js + Node.js API backend
+├── packages/
+│   └── shared/              # Shared types, constants, utilities
+├── backend/                 # Legacy backend (contains ai-service)
+├── docs/                    # Documentation & SQL migrations
+└── package.json             # Root monorepo package.json
+```
 
-- Buy and sell items like a standard marketplace.
-- Rent items with transparent pricing and deposit workflows.
-- Improve trust with verification, auditability, and secure transaction states.
-- Apply AI to improve listing quality, discovery, and fraud resistance.
+## Workspaces
 
-## Problem Statement
+This is an **npm workspaces** monorepo. All packages are linked and can reference each other.
 
-Current online marketplaces usually lack rental-first workflows and transaction safety. Common pain points include:
+### Apps
 
-- No structured rent booking process.
-- Weak or non-existent deposit handling.
-- No escrow-like custody flow to reduce fraud.
-- Minimal AI support for listing quality and risk signals.
-- Limited guided support for users.
+- **[apps/web](./apps/web)** - Web application (Vite, React, TailwindCSS, React Router)
+- **[apps/mobile](./apps/mobile)** - Mobile application (Expo, React Native, NativeWind)
+- **[apps/backend](./apps/backend)** - Backend API (Express, Supabase, Node.js)
 
-RentVerse addresses this by combining rental process orchestration, secure payment state handling, and AI-assisted intelligence in one platform.
+### Packages
 
-## Objectives
-
-1. Build a marketplace supporting buy, sell, and rent listing types.
-2. Integrate AI for categorization, image quality checks, and chatbot assistance.
-3. Implement escrow-style payment simulation to reduce scam risk.
-4. Deliver a scalable, user-friendly web and mobile-ready experience.
-5. Increase trust via verification and handover confirmation flows.
-
-
-## System Flow
-
-1. User publishes a listing for rent or sale.
-2. Renter selects dates and initiates booking.
-3. System calculates payable amount and security deposit.
-4. Escrow-like transaction state is created.
-5. Handover is verified through OTP or QR confirmation.
-6. Return is verified similarly on completion.
-7. Deposit is released or refunded per completion state.
-8. Admin module handles disputes using logs and verification records.
-
-## Security Measures
-
-1. Optional KYC for trust elevation on high-risk transactions.
-2. Escrow simulation to reduce direct payment fraud.
-3. OTP/QR handover verification to prevent false handover claims.
-4. Admin oversight for suspicious transactions and disputes.
-5. Reputation and rating signals for user trust decisions.
-6. AI-assisted suspicious activity detection.
+- **[packages/shared](./packages/shared)** - Shared TypeScript types, API utilities, constants
 
 ## Tech Stack
 
-### Frontend
+### Frontend (Web)
+- **React 19** - UI framework
+- **TypeScript 5.9** - Type safety
+- **Vite 7** - Build tool
+- **Tailwind CSS 3** - Styling
+- **TanStack Query** - Server state management
+- **React Router 7** - Routing
+- **Axios** - HTTP client
 
-- React 19
-- TypeScript 5
-- Vite 7
-- React Router 7
-- Tailwind CSS 3
+### Frontend (Mobile)
+- **React Native 0.76** - Mobile framework
+- **Expo 52** - React Native framework & tools
+- **Expo Router** - File-based routing
+- **NativeWind 2** - Tailwind CSS on React Native
+- **TanStack Query** - Server state management
+- **Axios** - HTTP client
 
-### State and Data
-
-- TanStack Query (React Query)
-- Context API for auth/language/theme modules
-
-### Backend Services
-
-- Supabase Auth
-- Supabase Postgres
-- Supabase Storage
-- Supabase Row Level Security policies
-
-### Tooling
-
-- ESLint 9
-- PostCSS + Autoprefixer
-- GitHub Actions (CI)
-- Vercel (production deployment)
-
-## Project Architecture
-
-High-level structure:
-
-```text
-src/
-  api/              # API clients and endpoint modules
-  components/       # Reusable UI and feature components
-  contexts/         # Global React context providers
-  hooks/            # Custom hooks
-  pages/            # Route-level pages
-  store/            # App state stores
-  supabase/         # Supabase auth/profile service logic
-  lib/              # Core client setup (e.g., Supabase client)
-  types/            # Shared TypeScript domain types
-  utils/            # Utilities and helpers
-docs/               # Setup and deployment guides
-```
-
-Routing entry points:
-
-- Public: `/`, `/browse`, `/listing/:id`, `/categories`, `/how-it-works`, `/about`, `/contact`
-- Auth: `/login`, `/register`, `/verify-email`, `/forgot-password`
-- Protected: `/dashboard`, `/my-listings`, `/my-bookings`, `/create-listing`
+### Backend
+- **Express 4** - HTTP server
+- **Node.js** - Runtime
+- **Supabase** - Database, Auth, Storage
+- **Python FastAPI** - AI microservices (category prediction, document verification, image quality)
+- **JWT** - Authentication
 
 ## Getting Started
 
 ### Prerequisites
-
-- Node.js 20 or later
-- npm 10 or later
-- Supabase project (URL + anon key)
+- Node.js 20+
+- npm 10+ (or pnpm 9+)
+- Python 3.10+ (for AI service)
 
 ### Installation
 
 ```bash
-git clone <your-repo-url>
-cd rentverse
+# Install root and workspace dependencies
 npm install
 ```
 
-### Run Development Server
+### Set Up Environment Variables
 
-```bash
-npm run dev
-```
-
-The Vite dev server is configured to run on port `3000`.
-
-### Build for Production
-
-```bash
-npm run build
-```
-
-### Preview Production Build
-
-```bash
-npm run preview
-```
-
-## Environment Variables
-
-Create a `.env` file in the project root:
-
+Create `.env.local` in root:
 ```env
-VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+VITE_BACKEND_URL=http://localhost:4000
 ```
 
-Important notes:
+Create `apps/mobile/.env`:
+```env
+EXPO_PUBLIC_API_URL=http://localhost:4000/api
+EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+```
 
-- The app will fail at startup if these variables are missing.
-- After changing `.env`, restart the dev server.
+Create `apps/backend/.env` (see [backend README](./apps/backend/README.md))
 
-## Database and Supabase Setup
+## Development Commands
 
-Follow the complete migration/setup guide:
+### Web App
+```bash
+npm run dev:web
+# Opens: http://localhost:3000
+```
 
-- `docs/supabase-listings-setup.md`
+### Mobile App
+```bash
+npm run dev:mobile
+# Press `i` (iOS), `a` (Android), or `w` (web)
+```
 
-Optional hard reset script (use carefully):
+### Backend API
+```bash
+npm run dev:backend
+# API: http://localhost:4000
+```
 
-- `docs/supabase-hard-reset.sql`
+### AI Service
+```bash
+npm run dev:ai
+# Service: http://localhost:8008
+# Or manually from backend/ai-service/
+```
 
-Minimum setup checklist:
+## Shared Types & Utilities
 
-1. Enable Supabase Email auth provider.
-2. Configure auth redirect URLs for local and deployed environments.
-3. Create `profiles`, `listings`, and `listing_images` tables.
-4. Create `listing-images` storage bucket.
-5. Enable RLS and add required table/storage policies.
+Both web and mobile import from `@rentverse/shared`:
 
-## Available Scripts
+```typescript
+import type {
+  AuthUser,
+  ListingType,
+  MarketplaceOrder,
+  ChatConversationSummary,
+} from '@rentverse/shared';
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start local development server |
-| `npm run build` | Type-check and create production build |
-| `npm run lint` | Run ESLint checks |
-| `npm run preview` | Preview production build locally |
+import { API_BASE_URL } from '@rentverse/shared';
+```
 
-## Deployment and CI/CD
+### What's Shared
 
-This project includes GitHub Actions + Vercel pipeline at:
+- **Types**: Auth, Listing, Order, Chat, User, Admin, Report types
+- **Constants**: API URLs, error codes
+- **Utilities**: API client helpers, validation functions (coming soon)
 
-- `.github/workflows/ci-cd-vercel.yml`
+## Data Architecture
 
-Pipeline behavior:
+**Single Backend Gateway** - All clients talk ONLY to the backend API:
 
-- Pull requests to `main`: install, lint, and build checks.
-- Pushes to `main`: same checks, then Vercel production deployment.
+```
+┌─────────────┐       ┌──────────────┐
+│   Web App   │       │  Mobile App  │
+│   (React)   │       │ (React Native)
+└──────┬──────┘       └──────┬───────┘
+       │                      │
+       └──────────┬───────────┘
+                  │ HTTP/REST
+          ┌───────▼────────┐
+          │  Backend API   │
+          │  (Express)     │
+          └───────┬────────┘
+                  │
+       ┌──────────┼──────────┐
+       │          │          │
+    ┌──▼──┐  ┌───▼────┐  ┌──▼──┐
+    │ DB  │  │ Storage│  │ AI  │
+    │(PG) │  │(SBase) │  │     │
+    └─────┘  └────────┘  └─────┘
+```
 
-Full step-by-step setup guide:
-
-- `docs/github-actions-vercel-deploy.md`
-
-Required GitHub repository variables/secrets:
-
-- Repository variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
-- Repository secret: `VERCEL_TOKEN`
-
-## Current Scope and Roadmap
-
-Current codebase status:
-
-- Core web app with authentication, marketplace browsing, and listing creation is in place.
-- Supabase-backed listing and image upload pipeline is implemented.
-- Several API modules for rentals, payments, and AI are scaffolded and ready for backend integration.
-
-Planned next milestones:
-
-1. Complete rental booking, escrow, and refund transaction flows.
-2. Implement AI microservices and connect `src/api/ai/*` modules.
-3. Add negotiation, advanced trust controls (KYC, blocking workflows), and analytics dashboards.
-4. Expand test automation and harden CI gates.
-
-## Contributing
-
-For academic/team collaboration, use this baseline workflow:
-
-1. Create a branch from `main`.
-2. Implement and test your changes.
-3. Run `npm run lint` and `npm run build` locally.
-4. Open a pull request with a clear description and screenshots where relevant.
-
-## License
-
-No license file is currently defined in this repository.
-
-If this project will be open sourced, add a `LICENSE` file (for example, MIT, Apache-2.0, or GPL-3.0) and update this section accordingly.
+**Benefits:**
+- ✅ Single source of truth
+- ✅ Data consistency across platforms
+- ✅ Centralized security & validation
+- ✅ Easier API maintenance

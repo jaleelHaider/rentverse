@@ -1,0 +1,26 @@
+{
+  "name": "@rentverse/backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "RentVerse Backend API",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "admin:bootstrap": "node src/scripts/bootstrap-superadmin.js",
+    "listings:bulk-upload": "node src/scripts/bulk-upload-listings.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "ioredis": "^5.4.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "otplib": "^12.0.1",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
